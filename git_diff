@@ -1,0 +1,25 @@
+docs/iteration-diff.md
+- 补充本次迭代目标：卷页动效、左右边缘快速翻页、预设语音包选择
+
+docs/prd.md
+docs/spec.md
+- 将阅读页交互和听书模型更新为卷页层、边缘热点、语音预设映射
+
+src/features/reader/ReaderScreen.tsx
+- 重写阅读页动画结构，增加卷页遮罩、书脊阴影、背页预览和边缘点击翻页
+- 加入语音预设选择 UI，并在朗读前按预设匹配设备 voice
+
+src/data/voicePresets.ts
+src/features/reader/voice-utils.ts
+- 新增预设语音配置和设备 voice 匹配逻辑
+
+src/state/library-context.tsx
+src/types/book.ts
+- 扩展全局状态，保存当前语音预设并暴露更新动作
+
+README.md
+change_summary.md
+risk_summary.md
+docs/changelog.md
+docs/open-issues.md
+- 同步文档、变更摘要和风险说明

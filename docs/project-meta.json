@@ -1,0 +1,14 @@
+{
+  "project_id": "proj_flash_read1",
+  "project_name": "flash-read1",
+  "project_path": "/Users/daniel/Desktop/Agent Project/flash-read1",
+  "last_active_run_id": "wr_20260401035809_6e13914a",
+  "updated_at": "2026-04-01T03:58:11.283839+00:00",
+  "active_prd": "docs/prd.md",
+  "active_spec": "docs/spec.md",
+  "active_changelog": "docs/changelog.md",
+  "active_open_issues": "docs/open-issues.md",
+  "aliases": [
+    "flash-read1"
+  ]
+}
