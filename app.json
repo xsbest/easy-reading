@@ -3,6 +3,9 @@
     "name": "flash-read1",
     "slug": "flash-read1",
     "version": "1.0.0",
+    "experiments": {
+      "baseUrl": "/easy-reading"
+    },
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "splash": {
@@ -21,8 +24,8 @@
       }
     },
     "web": {
-      "bundler": "metro"
+      "bundler": "metro",
+      "output": "single"
     }
   }
 }
-
