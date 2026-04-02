@@ -1,5 +1,28 @@
 # Iteration Diff
 
+## 2026-04-03 (Reader Theme Refresh)
+
+### 本次需求增量
+
+- 阅读主题新增一款赛博朋克风格配色，保留现有主题轮换入口
+- 阅读页头部、阅读容器和底部控制区重新排版，提升层次感与沉浸感
+- 在不改变翻页和朗读主链路的前提下，补充背景氛围、信息徽标和更完整的控制面板视觉
+
+### 本次实现边界
+
+- 仅调整 `src/theme/` 与阅读页局部 UI，不扩展到书架或全局设置
+- 不新增依赖，不引入渐变库、动画库或新的导航结构
+- 继续保留局部主题状态，不做持久化
+
+### 受影响模块
+
+- `src/theme/tokens.ts`
+- `src/features/reader/ReaderScreen.tsx`
+- `docs/iteration-diff.md`
+- `docs/spec.md`
+- `docs/open-issues.md`
+- `docs/changelog.md`
+
 ## 2026-04-03 (Chinese ElevenLabs PoC)
 
 ### 本次需求增量

@@ -452,10 +452,44 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
       : matchedVoiceResult.reason === 'approximate' && matchedVoice
         ? `${selectedVoicePreset.label} · 目标 ${selectedVoicePreset.tone} · 当前回退到近似音色 ${matchedVoice.name}`
         : `${selectedVoicePreset.label} · 目标 ${selectedVoicePreset.tone} · 当前设备未命中，将回退到系统默认朗读`;
+  const nextThemeLabel = readerThemes[nextReaderThemeId].label;
+  const narrationStatusLabel = isCurrentNarration
+    ? isPausedNarration
+      ? '朗读已暂停'
+      : '正在朗读当前页'
+    : '准备开始听书';
+  const toneStatusLabel = matchedVoice ? matchedVoice.name : '系统默认';
 
   return (
     <View style={[styles.screen, { backgroundColor: readerTheme.screenBackground }]}>
-      <View style={styles.header}>
+      <View pointerEvents="none" style={styles.ambientLayer}>
+        <View
+          style={[
+            styles.ambientOrb,
+            styles.ambientOrbPrimary,
+            { backgroundColor: readerTheme.heroGlow }
+          ]}
+        />
+        <View
+          style={[
+            styles.ambientOrb,
+            styles.ambientOrbSecondary,
+            { backgroundColor: readerTheme.heroGlowSecondary }
+          ]}
+        />
+        <View style={[styles.ambientFrame, { borderColor: readerTheme.shellBorder }]} />
+      </View>
+
+      <View
+        style={[
+          styles.headerCard,
+          {
+            backgroundColor: readerTheme.panelBackground,
+            borderColor: readerTheme.panelBorder,
+            shadowColor: readerTheme.shadow
+          }
+        ]}
+      >
         <Pressable
           onPress={() => void handleClose()}
           style={[styles.backButton, { backgroundColor: readerTheme.surfaceMuted }]}
@@ -463,6 +497,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
           <Text style={[styles.backButtonLabel, { color: readerTheme.text }]}>返回书架</Text>
         </Pressable>
         <View style={styles.headerMeta}>
+          <Text style={[styles.headerEyebrow, { color: readerTheme.primary }]}>沉浸阅读</Text>
           <Text numberOfLines={1} style={[styles.bookTitle, { color: readerTheme.text }]}>
             {book.title}
           </Text>
@@ -485,13 +520,61 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
           <Text style={[styles.themeButtonLabel, { color: readerTheme.primaryText }]}>
             {readerTheme.label}
           </Text>
+          <Text style={[styles.themeButtonNextLabel, { color: readerTheme.primaryText }]}>
+            切到 {nextThemeLabel}
+          </Text>
         </Pressable>
       </View>
 
       <View
         {...panResponder.panHandlers}
-        style={[styles.readerShell, { backgroundColor: readerTheme.shellBackground }]}
+        style={[
+          styles.readerShell,
+          {
+            backgroundColor: readerTheme.shellBackground,
+            borderColor: readerTheme.shellBorder
+          }
+        ]}
       >
+        <View
+          pointerEvents="none"
+          style={[styles.readerShellInset, { borderColor: readerTheme.shellInset }]}
+        />
+        <View style={styles.readerShellTopbar}>
+          <View
+            style={[
+              styles.statusBadge,
+              {
+                backgroundColor: readerTheme.panelBackground,
+                borderColor: readerTheme.panelBorder
+              }
+            ]}
+          >
+            <Text style={[styles.statusBadgeEyebrow, { color: readerTheme.textSecondary }]}>
+              当前状态
+            </Text>
+            <Text style={[styles.statusBadgeValue, { color: readerTheme.text }]}>
+              {narrationStatusLabel}
+            </Text>
+          </View>
+          <View
+            style={[
+              styles.statusBadge,
+              styles.statusBadgeCompact,
+              {
+                backgroundColor: readerTheme.panelBackground,
+                borderColor: readerTheme.panelBorder
+              }
+            ]}
+          >
+            <Text style={[styles.statusBadgeEyebrow, { color: readerTheme.textSecondary }]}>
+              命中音色
+            </Text>
+            <Text numberOfLines={1} style={[styles.statusBadgeValue, { color: readerTheme.text }]}>
+              {toneStatusLabel}
+            </Text>
+          </View>
+        </View>
         <View pointerEvents="box-none" style={styles.edgeAssistOverlay}>
           <Pressable
             accessibilityLabel="上一页"
@@ -670,6 +753,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
               pointerEvents="none"
               style={[styles.pageShadow, { backgroundColor: readerTheme.shadow, opacity: pageShadowOpacity }]}
             />
+            <View pointerEvents="none" style={[styles.pageTrim, { borderColor: readerTheme.pageTrim }]} />
             <View style={styles.pageTopRow}>
               <View style={[styles.chapterPill, { backgroundColor: book.accentColor }]}>
                 <Text style={styles.chapterPillLabel}>卷页阅读</Text>
@@ -689,10 +773,26 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
         </View>
       </View>
 
-      <View style={styles.footer}>
-        <Text style={[styles.progress, { color: readerTheme.text }]}>
-          第 {page + 1} 页 / 共 {book.pages.length} 页
-        </Text>
+      <View
+        style={[
+          styles.footerPanel,
+          {
+            backgroundColor: readerTheme.panelBackground,
+            borderColor: readerTheme.panelBorder,
+            shadowColor: readerTheme.shadow
+          }
+        ]}
+      >
+        <View style={styles.footerTopRow}>
+          <Text style={[styles.progress, { color: readerTheme.text }]}>
+            第 {page + 1} 页 / 共 {book.pages.length} 页
+          </Text>
+          <View style={[styles.footerThemeBadge, { backgroundColor: readerTheme.panelAccent }]}>
+            <Text style={[styles.footerThemeBadgeLabel, { color: readerTheme.textSecondary }]}>
+              主题 {readerTheme.label}
+            </Text>
+          </View>
+        </View>
         <View style={styles.voicePresetRow}>
           {voicePresets.map((preset) => {
             const isSelected = preset.id === selectedVoicePreset.id;
@@ -819,19 +919,63 @@ const styles = StyleSheet.create({
   screen: {
     backgroundColor: colors.background,
     flex: 1,
-    paddingBottom: 28,
+    overflow: 'hidden',
+    paddingBottom: 20,
     paddingHorizontal: 20,
-    paddingTop: 64
+    paddingTop: 56
   },
-  header: {
+  ambientLayer: {
+    ...StyleSheet.absoluteFillObject
+  },
+  ambientOrb: {
+    borderRadius: 999,
+    position: 'absolute'
+  },
+  ambientOrbPrimary: {
+    height: 220,
+    opacity: 0.92,
+    right: -40,
+    top: 36,
+    width: 220
+  },
+  ambientOrbSecondary: {
+    bottom: 168,
+    height: 280,
+    left: -72,
+    opacity: 0.7,
+    width: 280
+  },
+  ambientFrame: {
+    borderRadius: 32,
+    borderWidth: 1,
+    bottom: 14,
+    left: 12,
+    opacity: 0.3,
+    position: 'absolute',
+    right: 12,
+    top: 36
+  },
+  headerCard: {
     alignItems: 'center',
+    borderRadius: 28,
+    borderWidth: 1,
     flexDirection: 'row',
     gap: 14,
-    marginBottom: 14
+    marginBottom: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    shadowOffset: {
+      width: 0,
+      height: 10
+    },
+    shadowOpacity: 0.12,
+    shadowRadius: 24
   },
   backButton: {
     backgroundColor: colors.surfaceMuted,
     borderRadius: 999,
+    minHeight: 42,
+    justifyContent: 'center',
     paddingHorizontal: 14,
     paddingVertical: 10
   },
@@ -843,10 +987,17 @@ const styles = StyleSheet.create({
   headerMeta: {
     flex: 1
   },
+  headerEyebrow: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    marginBottom: 4,
+    textTransform: 'uppercase'
+  },
   themeButton: {
-    borderRadius: 18,
+    borderRadius: 20,
     borderWidth: 1,
-    minWidth: 76,
+    minWidth: 88,
     paddingHorizontal: 12,
     paddingVertical: 10
   },
@@ -863,9 +1014,15 @@ const styles = StyleSheet.create({
     marginTop: 2,
     textAlign: 'center'
   },
+  themeButtonNextLabel: {
+    fontSize: 10,
+    marginTop: 3,
+    opacity: 0.7,
+    textAlign: 'center'
+  },
   bookTitle: {
     color: colors.text,
-    fontSize: 20,
+    fontSize: 21,
     fontWeight: '700'
   },
   author: {
@@ -874,10 +1031,57 @@ const styles = StyleSheet.create({
     marginTop: 4
   },
   readerShell: {
-    borderRadius: 32,
+    borderRadius: 34,
+    borderWidth: 1,
     flex: 1,
-    paddingVertical: 8,
-    position: 'relative'
+    paddingBottom: 10,
+    paddingHorizontal: 10,
+    paddingTop: 10,
+    position: 'relative',
+    shadowOffset: {
+      width: 0,
+      height: 16
+    },
+    shadowOpacity: 0.16,
+    shadowRadius: 32
+  },
+  readerShellInset: {
+    borderRadius: 28,
+    borderWidth: 1,
+    bottom: 8,
+    left: 8,
+    opacity: 0.5,
+    position: 'absolute',
+    right: 8,
+    top: 8
+  },
+  readerShellTopbar: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 10,
+    paddingHorizontal: 6
+  },
+  statusBadge: {
+    borderRadius: 18,
+    borderWidth: 1,
+    flex: 1,
+    minHeight: 58,
+    paddingHorizontal: 12,
+    paddingVertical: 10
+  },
+  statusBadgeCompact: {
+    flex: 0.78
+  },
+  statusBadgeEyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.9,
+    marginBottom: 4,
+    textTransform: 'uppercase'
+  },
+  statusBadgeValue: {
+    fontSize: 14,
+    fontWeight: '700'
   },
   edgeAssistOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -887,7 +1091,7 @@ const styles = StyleSheet.create({
     bottom: 12,
     justifyContent: 'center',
     position: 'absolute',
-    top: 12,
+    top: 84,
     width: EDGE_TAP_WIDTH
   },
   edgeHitAreaLeft: {
@@ -903,7 +1107,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     gap: 4,
-    minHeight: 124,
+    minHeight: 132,
     paddingHorizontal: 6,
     paddingVertical: 10,
     width: 24
@@ -941,6 +1145,7 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     flex: 1,
     marginHorizontal: PAGE_SIDE_GUTTER,
+    marginTop: 2,
     overflow: 'hidden',
     position: 'relative'
   },
@@ -948,8 +1153,8 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     borderRadius: 28,
     borderWidth: 1,
-    paddingHorizontal: 15,
-    paddingVertical: 14
+    paddingHorizontal: 16,
+    paddingVertical: 16
   },
   spineShadow: {
     ...StyleSheet.absoluteFillObject,
@@ -989,18 +1194,28 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flex: 1,
     overflow: 'hidden',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     zIndex: 3
   },
   pageShadow: {
     ...StyleSheet.absoluteFillObject
   },
+  pageTrim: {
+    borderRadius: 22,
+    borderWidth: 1,
+    bottom: 10,
+    left: 10,
+    opacity: 0.9,
+    position: 'absolute',
+    right: 10,
+    top: 10
+  },
   pageTopRow: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 6
+    marginBottom: 10
   },
   pageMetaLabel: {
     color: colors.textSecondary,
@@ -1021,7 +1236,7 @@ const styles = StyleSheet.create({
   },
   chapterPillMuted: {
     backgroundColor: '#E4D5BF',
-    marginBottom: 10
+    marginBottom: 12
   },
   chapterPillMutedLabel: {
     color: colors.textSecondary
@@ -1031,27 +1246,51 @@ const styles = StyleSheet.create({
   },
   readerContent: {
     flexGrow: 1,
-    paddingBottom: 8
+    paddingBottom: 12
   },
   pagePreview: {
     color: colors.textSecondary,
     fontSize: 16,
-    lineHeight: 27
+    lineHeight: 28
   },
   pageBody: {
     color: colors.text,
-    fontSize: 16.5,
-    lineHeight: 28,
-    paddingBottom: 4
+    fontSize: 17,
+    letterSpacing: 0.2,
+    lineHeight: 30,
+    paddingBottom: 6
   },
-  footer: {
+  footerPanel: {
+    borderRadius: 26,
+    borderWidth: 1,
+    gap: 10,
+    marginTop: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    shadowOffset: {
+      width: 0,
+      height: 12
+    },
+    shadowOpacity: 0.12,
+    shadowRadius: 28
+  },
+  footerTopRow: {
     alignItems: 'center',
-    gap: 8,
-    marginTop: 14
+    flexDirection: 'row',
+    justifyContent: 'space-between'
   },
   progress: {
     color: colors.text,
     fontSize: 14,
+    fontWeight: '700'
+  },
+  footerThemeBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7
+  },
+  footerThemeBadgeLabel: {
+    fontSize: 11,
     fontWeight: '700'
   },
   voicePresetRow: {
@@ -1146,6 +1385,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     maxWidth: 360,
-    textAlign: 'center'
+    textAlign: 'center',
+    alignSelf: 'center'
   }
 });
