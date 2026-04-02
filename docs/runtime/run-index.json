@@ -1,16 +1,61 @@
 {
   "project_path": "/Users/daniel/Desktop/Agent Project/flash-read1",
-  "updated_at": "2026-04-02T15:30:47.237Z",
+  "updated_at": "2026-04-02T18:33:06.734Z",
   "runs": [
+    {
+      "run_id": "wr2_20260402182029_762e70e3",
+      "request": "flash-read1 项目的语音包还是太难听了，你能不能上网找点真的很热门好用的语音包，咬字都不准",
+      "project_path": "/Users/daniel/Desktop/Agent Project/flash-read1",
+      "status": "VALIDATING",
+      "phase": "validating",
+      "current_node": "publish",
+      "created_at": "2026-04-02T18:20:29.075Z",
+      "updated_at": "2026-04-02T18:33:06.734Z",
+      "change_goal": "flash-read1 项目的语音包还是太难听了，你能不能上网找点真的很热门好用的语音包，咬字都不准",
+      "scope": [
+        "src/features/reader/",
+        "src/data/",
+        "docs/"
+      ],
+      "changed_files": [
+        "docs/changelog.md",
+        "docs/open-issues.md",
+        "docs/runtime/run-index.json",
+        "docs/voice-provider-research.md"
+      ],
+      "validator_status": "PASS",
+      "triage_action": "PROCEED",
+      "triage_target_run_id": ""
+    },
+    {
+      "run_id": "wr2_20260402181759_7097910b",
+      "request": "flash-read1 项目的语音包还是太难听了，你能不能上网找点真的很热门好用的语音包，咬字都不准",
+      "project_path": "/Users/daniel/Desktop/Agent Project/flash-read1",
+      "status": "CANCELLED",
+      "phase": "cancelled",
+      "current_node": "cancel",
+      "created_at": "2026-04-02T18:17:59.067Z",
+      "updated_at": "2026-04-02T18:19:53.205Z",
+      "change_goal": "flash-read1 项目的语音包还是太难听了，你能不能上网找点真的很热门好用的语音包，咬字都不准",
+      "scope": [
+        "src/features/reader/",
+        "src/data/",
+        "docs/"
+      ],
+      "changed_files": [],
+      "validator_status": "PENDING",
+      "triage_action": "PROCEED",
+      "triage_target_run_id": ""
+    },
     {
       "run_id": "wr2_20260402150737_94f2fde3",
       "request": "flash-read1 项目现在语音包有问题，听着杂音，找几个市面上最受欢迎的英文、中文语音离线包引入进来（cdn），替换现在的语音包",
       "project_path": "/Users/daniel/Desktop/Agent Project/flash-read1",
-      "status": "VALIDATING",
-      "phase": "validating",
-      "current_node": "notify",
+      "status": "CANCELLED",
+      "phase": "cancelled",
+      "current_node": "cancel",
       "created_at": "2026-04-02T15:07:37.701Z",
-      "updated_at": "2026-04-02T15:30:47.237Z",
+      "updated_at": "2026-04-02T18:19:05.155Z",
       "change_goal": "flash-read1 项目现在语音包有问题，听着杂音，找几个市面上最受欢迎的英文、中文语音离线包引入进来（cdn），替换现在的语音包",
       "scope": [
         "src/features/reader/",

@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-04-02T18:27:13Z
+- 新增 `docs/voice-provider-research.md`，记录“热门高质量语音包”调研结果、候选方案和取舍结论
+- 明确当前 `expo-speech` 方案只能使用设备已有 voice；若要显著提升音质与咬字，需要批准替换底层 TTS 能力
+- 将 `ElevenLabs`、`Azure AI Speech`、`OpenAI TTS`、`Google Cloud TTS` 纳入候选评估，并给出优先级建议
+
 ## 2026-03-29
 - 项目创建或首次接入 workflow
 - 增加迭代差异文档，明确拟真翻页与本地轻量听书范围
