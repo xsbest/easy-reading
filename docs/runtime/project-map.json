@@ -1,0 +1,64 @@
+{
+  "project": "flash-read1",
+  "tech_stack": [
+    "node",
+    "react",
+    "react-native",
+    "expo",
+    "typescript"
+  ],
+  "entrypoints": {
+    "app": [
+      "App.tsx",
+      "src/app/AppShell.tsx"
+    ],
+    "reader": [
+      "src/features/reader/ReaderScreen.tsx"
+    ],
+    "data": [
+      "src/data/voicePresets.ts",
+      "src/data/mockBooks.ts"
+    ]
+  },
+  "high_risk_paths": [],
+  "default_scope_profiles": {
+    "reader-bugfix": [
+      "src/features/reader/",
+      "src/data/",
+      "docs/"
+    ],
+    "theme-change": [
+      "src/theme/",
+      "src/state/",
+      "src/features/",
+      "docs/"
+    ],
+    "default": [
+      "src/",
+      "docs/",
+      "README.md",
+      "agents.md"
+    ]
+  },
+  "validator_profiles": {
+    "doc-only": [],
+    "rn-lite": [
+      "npm run typecheck"
+    ],
+    "web-lite": [
+      "npm run build"
+    ],
+    "strict": [
+      "npm run lint",
+      "npm run typecheck",
+      "npm test"
+    ]
+  },
+  "package_scripts": {
+    "start": "expo start",
+    "ios": "expo start --ios",
+    "android": "expo start --android",
+    "web": "expo start --web",
+    "typecheck": "tsc --noEmit"
+  }
+}

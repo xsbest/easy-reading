@@ -101,8 +101,19 @@
 ## 2026-04-01T03:04:10.354Z
 - tester 通过基础验证，进入 reviewer 阶段
 
+## 2026-04-01T13:45:00.000Z
+- 新增主题切换（light/dark），书架与阅读页配色支持动态切换
+
 ## 2026-04-01T04:03:54.512Z
 - tester 通过基础验证，进入 reviewer 阶段
 
 ## 2026-04-01T04:07:15.237Z
 - tester 通过基础验证，进入 reviewer 阶段
+
+## 2026-04-01T13:20:15.315Z
+- tester 通过基础验证，进入 reviewer 阶段
+
+## 2026-04-02T07:25:00Z
+- 将语音预设重命名为中文 / 英文离线 voice 目标组，优先命中 `Xiaoxiao / Tingting`、`Yunxi / Kangkang`、`Samantha / Ava`、`Daniel / Aaron` 等主流系统 voice
+- 收紧 `voice-utils.ts` 的语言族匹配与跨语种惩罚，降低中文预设误命中英文 voice、英文预设误命中中文 voice 的概率
+- 阅读页语音提示改为展示“当前预设目标音色 + 实际命中或回退结果”，让系统回退状态可见

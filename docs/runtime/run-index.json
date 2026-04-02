@@ -1,0 +1,75 @@
+{
+  "project_path": "/Users/daniel/Desktop/Agent Project/flash-read1",
+  "updated_at": "2026-04-02T15:30:47.237Z",
+  "runs": [
+    {
+      "run_id": "wr2_20260402150737_94f2fde3",
+      "request": "flash-read1 项目现在语音包有问题，听着杂音，找几个市面上最受欢迎的英文、中文语音离线包引入进来（cdn），替换现在的语音包",
+      "project_path": "/Users/daniel/Desktop/Agent Project/flash-read1",
+      "status": "VALIDATING",
+      "phase": "validating",
+      "current_node": "notify",
+      "created_at": "2026-04-02T15:07:37.701Z",
+      "updated_at": "2026-04-02T15:30:47.237Z",
+      "change_goal": "flash-read1 项目现在语音包有问题，听着杂音，找几个市面上最受欢迎的英文、中文语音离线包引入进来（cdn），替换现在的语音包",
+      "scope": [
+        "src/features/reader/",
+        "src/data/",
+        "docs/"
+      ],
+      "changed_files": [
+        "docs/changelog.md",
+        "docs/iteration-diff.md",
+        "docs/open-issues.md",
+        "docs/runtime/run-index.json",
+        "docs/spec.md",
+        "src/data/voicePresets.ts",
+        "src/features/reader/ReaderScreen.tsx",
+        "src/features/reader/voice-utils.ts"
+      ],
+      "validator_status": "PASS",
+      "triage_action": "",
+      "triage_target_run_id": ""
+    },
+    {
+      "run_id": "wr2_20260402151301_cd485eac",
+      "request": "flash-read1 项目现在语音包有问题，听着杂音，找几个市面上最受欢迎的英文、中文语音离线包引入进来（cdn），替换现在的语音包",
+      "project_path": "/Users/daniel/Desktop/Agent Project/flash-read1",
+      "status": "REDIRECTED_TO_RUN",
+      "phase": "triaged",
+      "current_node": "notify",
+      "created_at": "2026-04-02T15:13:01.526Z",
+      "updated_at": "2026-04-02T15:26:56.918Z",
+      "change_goal": "flash-read1 项目现在语音包有问题，听着杂音，找几个市面上最受欢迎的英文、中文语音离线包引入进来（cdn），替换现在的语音包",
+      "scope": [
+        "src/features/reader/",
+        "src/data/",
+        "docs/"
+      ],
+      "changed_files": [],
+      "validator_status": "PENDING",
+      "triage_action": "",
+      "triage_target_run_id": ""
+    },
+    {
+      "run_id": "wr2_20260402151013_1d7d3438",
+      "request": "flash-read1 项目现在语音包有问题，听着杂音，找几个市面上最受欢迎的英文、中文语音离线包引入进来（cdn），替换现在的语音包",
+      "project_path": "/Users/daniel/Desktop/Agent Project/flash-read1",
+      "status": "REDIRECTED_TO_RUN",
+      "phase": "triaged",
+      "current_node": "notify",
+      "created_at": "2026-04-02T15:10:13.842Z",
+      "updated_at": "2026-04-02T15:26:56.893Z",
+      "change_goal": "flash-read1 项目现在语音包有问题，听着杂音，找几个市面上最受欢迎的英文、中文语音离线包引入进来（cdn），替换现在的语音包",
+      "scope": [
+        "src/features/reader/",
+        "src/data/",
+        "docs/"
+      ],
+      "changed_files": [],
+      "validator_status": "PENDING",
+      "triage_action": "",
+      "triage_target_run_id": ""
+    }
+  ]
+}

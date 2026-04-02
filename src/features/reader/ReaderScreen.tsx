@@ -16,7 +16,7 @@ import {
 
 import { voicePresets } from '../../data/voicePresets';
 import { useLibrary } from '../../state/library-context';
-import { colors } from '../../theme/tokens';
+import { colors, readerThemeIds, ReaderThemeId, readerThemes } from '../../theme/tokens';
 import { Book } from '../../types/book';
 import { resolveVoiceAssignments, VoiceMatchResult } from './voice-utils';
 
@@ -60,6 +60,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
   const [dragDirection, setDragDirection] = useState<-1 | 0 | 1>(0);
   const [availableVoices, setAvailableVoices] = useState<Voice[]>([]);
   const [voiceLookupReady, setVoiceLookupReady] = useState(false);
+  const [readerThemeId, setReaderThemeId] = useState<ReaderThemeId>('paper');
   const dragX = useRef(new Animated.Value(0)).current;
   const isAnimatingRef = useRef(false);
   const narrationTokenRef = useRef<string | null>(null);
@@ -72,6 +73,9 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
   );
   const matchedVoiceResult = voiceAssignments[selectedVoicePreset.id] ?? DEFAULT_VOICE_MATCH;
   const matchedVoice = matchedVoiceResult.voice;
+  const readerTheme = readerThemes[readerThemeId];
+  const nextReaderThemeId =
+    readerThemeIds[(readerThemeIds.indexOf(readerThemeId) + 1) % readerThemeIds.length];
 
   const isCurrentNarration =
     isNarrationActive &&
@@ -328,29 +332,57 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
     setVoicePreset(presetId);
   };
 
+  const handleCycleTheme = () => {
+    setReaderThemeId(nextReaderThemeId);
+  };
+
   const voiceFootnote = !voiceLookupReady
-    ? '正在读取设备可用音色...'
+    ? `正在扫描 ${selectedVoicePreset.label} 目标音色...`
     : matchedVoiceResult.reason === 'unique' && matchedVoice
-      ? `当前映射到 ${matchedVoice.name}`
+      ? `${selectedVoicePreset.label} · 目标 ${selectedVoicePreset.tone} · 已命中 ${matchedVoice.name}`
       : matchedVoiceResult.reason === 'approximate' && matchedVoice
-        ? `当前使用近似音色 ${matchedVoice.name}，设备音色有限时会自动回退`
-        : '当前设备未命中预设音色，将回退到系统默认朗读';
+        ? `${selectedVoicePreset.label} · 目标 ${selectedVoicePreset.tone} · 当前回退到近似音色 ${matchedVoice.name}`
+        : `${selectedVoicePreset.label} · 目标 ${selectedVoicePreset.tone} · 当前设备未命中，将回退到系统默认朗读`;
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: readerTheme.screenBackground }]}>
       <View style={styles.header}>
-        <Pressable onPress={() => void handleClose()} style={styles.backButton}>
-          <Text style={styles.backButtonLabel}>返回书架</Text>
+        <Pressable
+          onPress={() => void handleClose()}
+          style={[styles.backButton, { backgroundColor: readerTheme.surfaceMuted }]}
+        >
+          <Text style={[styles.backButtonLabel, { color: readerTheme.text }]}>返回书架</Text>
         </Pressable>
         <View style={styles.headerMeta}>
-          <Text numberOfLines={1} style={styles.bookTitle}>
+          <Text numberOfLines={1} style={[styles.bookTitle, { color: readerTheme.text }]}>
             {book.title}
           </Text>
-          <Text style={styles.author}>{book.author}</Text>
+          <Text style={[styles.author, { color: readerTheme.textSecondary }]}>{book.author}</Text>
         </View>
+        <Pressable
+          accessibilityLabel="切换阅读主题"
+          onPress={handleCycleTheme}
+          style={[
+            styles.themeButton,
+            {
+              backgroundColor: readerTheme.primary,
+              borderColor: readerTheme.border
+            }
+          ]}
+        >
+          <Text style={[styles.themeButtonEyebrow, { color: readerTheme.primaryText }]}>
+            主题
+          </Text>
+          <Text style={[styles.themeButtonLabel, { color: readerTheme.primaryText }]}>
+            {readerTheme.label}
+          </Text>
+        </Pressable>
       </View>
 
-      <View {...panResponder.panHandlers} style={styles.readerShell}>
+      <View
+        {...panResponder.panHandlers}
+        style={[styles.readerShell, { backgroundColor: readerTheme.shellBackground }]}
+      >
         <View pointerEvents="box-none" style={styles.edgeAssistOverlay}>
           <Pressable
             accessibilityLabel="上一页"
@@ -362,13 +394,31 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
               style={[
                 styles.edgeRail,
                 styles.edgeRailLeft,
+                {
+                  backgroundColor: readerTheme.edgeRail,
+                  borderColor: readerTheme.edgeRailBorder
+                },
                 !canGoPrevious && styles.edgeRailDisabled
               ]}
             >
-              <Text style={[styles.edgeHintCaption, !canGoPrevious && styles.edgeHintCaptionDisabled]}>
+              <Text
+                style={[
+                  styles.edgeHintCaption,
+                  { color: readerTheme.textSecondary },
+                  !canGoPrevious && styles.edgeHintCaptionDisabled
+                ]}
+              >
                 {canGoPrevious ? 'PREV' : 'FIRST'}
               </Text>
-              <Text style={[styles.edgeHitLabel, styles.edgeHitLabelLeft]}>上一页</Text>
+              <Text
+                style={[
+                  styles.edgeHitLabel,
+                  styles.edgeHitLabelLeft,
+                  { color: readerTheme.edgeLabel }
+                ]}
+              >
+                上一页
+              </Text>
             </View>
           </Pressable>
           <Pressable
@@ -381,13 +431,31 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
               style={[
                 styles.edgeRail,
                 styles.edgeRailRight,
+                {
+                  backgroundColor: readerTheme.edgeRail,
+                  borderColor: readerTheme.edgeRailBorder
+                },
                 !canGoNext && styles.edgeRailDisabled
               ]}
             >
-              <Text style={[styles.edgeHintCaption, !canGoNext && styles.edgeHintCaptionDisabled]}>
+              <Text
+                style={[
+                  styles.edgeHintCaption,
+                  { color: readerTheme.textSecondary },
+                  !canGoNext && styles.edgeHintCaptionDisabled
+                ]}
+              >
                 {canGoNext ? 'NEXT' : 'LAST'}
               </Text>
-              <Text style={[styles.edgeHitLabel, styles.edgeHitLabelRight]}>下一页</Text>
+              <Text
+                style={[
+                  styles.edgeHitLabel,
+                  styles.edgeHitLabelRight,
+                  { color: readerTheme.edgeLabel }
+                ]}
+              >
+                下一页
+              </Text>
             </View>
           </Pressable>
         </View>
@@ -398,22 +466,44 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
             style={[
               styles.backgroundPage,
               {
+                backgroundColor: readerTheme.surfaceRaised,
+                borderColor: readerTheme.border
+              },
+              {
                 opacity: backgroundOpacity,
                 transform: [{ scale: backgroundScale }]
               }
             ]}
           >
-            <View style={[styles.chapterPill, styles.chapterPillMuted]}>
-              <Text style={[styles.chapterPillLabel, styles.chapterPillMutedLabel]}>
+            <View
+              style={[
+                styles.chapterPill,
+                styles.chapterPillMuted,
+                { backgroundColor: readerTheme.accent }
+              ]}
+            >
+              <Text
+                style={[
+                  styles.chapterPillLabel,
+                  styles.chapterPillMutedLabel,
+                  { color: readerTheme.textSecondary }
+                ]}
+              >
                 {dragDirection < 0 ? '下一页预览' : dragDirection > 0 ? '上一页预览' : '阅读中'}
               </Text>
             </View>
-            <Text numberOfLines={PAGE_PREVIEW_LINE_COUNT} style={styles.pagePreview}>
+            <Text
+              numberOfLines={PAGE_PREVIEW_LINE_COUNT}
+              style={[styles.pagePreview, { color: readerTheme.textSecondary }]}
+            >
               {targetPageText}
             </Text>
           </Animated.View>
 
-          <Animated.View pointerEvents="none" style={[styles.spineShadow, { opacity: spineShadowOpacity }]} />
+          <Animated.View
+            pointerEvents="none"
+            style={[styles.spineShadow, { backgroundColor: readerTheme.shadow, opacity: spineShadowOpacity }]}
+          />
 
           <Animated.View
             pointerEvents="none"
@@ -453,6 +543,10 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
             style={[
               styles.foregroundPage,
               {
+                backgroundColor: readerTheme.surface,
+                borderColor: readerTheme.border
+              },
+              {
                 transform: [
                   { perspective: 1600 },
                   { translateX: dragX },
@@ -463,12 +557,15 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
               }
             ]}
           >
-            <Animated.View pointerEvents="none" style={[styles.pageShadow, { opacity: pageShadowOpacity }]} />
+            <Animated.View
+              pointerEvents="none"
+              style={[styles.pageShadow, { backgroundColor: readerTheme.shadow, opacity: pageShadowOpacity }]}
+            />
             <View style={styles.pageTopRow}>
               <View style={[styles.chapterPill, { backgroundColor: book.accentColor }]}>
                 <Text style={styles.chapterPillLabel}>卷页阅读</Text>
               </View>
-              <Text style={styles.pageMetaLabel}>
+              <Text style={[styles.pageMetaLabel, { color: readerTheme.textSecondary }]}>
                 第 {page + 1} 页 · 共 {book.pages.length} 页
               </Text>
             </View>
@@ -477,14 +574,14 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
               showsVerticalScrollIndicator={false}
               style={styles.readerScroll}
             >
-              <Text style={styles.pageBody}>{book.pages[page]}</Text>
+              <Text style={[styles.pageBody, { color: readerTheme.text }]}>{book.pages[page]}</Text>
             </ScrollView>
           </Animated.View>
         </View>
       </View>
 
       <View style={styles.footer}>
-        <Text style={styles.progress}>
+        <Text style={[styles.progress, { color: readerTheme.text }]}>
           第 {page + 1} 页 / 共 {book.pages.length} 页
         </Text>
         <View style={styles.voicePresetRow}>
@@ -497,14 +594,38 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
                 onPress={() => void handleSelectPreset(preset.id)}
                 style={[
                   styles.voiceChip,
-                  isSelected && styles.voiceChipSelected,
-                  preset.gender === 'female' ? styles.voiceChipFemale : styles.voiceChipMale
+                  preset.gender === 'female' ? styles.voiceChipFemale : styles.voiceChipMale,
+                  {
+                    borderColor: isSelected
+                      ? readerTheme.text
+                      : preset.gender === 'female'
+                        ? '#D8B2AC'
+                        : '#AAC2C9',
+                    backgroundColor: isSelected
+                      ? readerTheme.text
+                      : preset.gender === 'female'
+                        ? readerTheme.accentSoft
+                        : readerTheme.surfaceMuted
+                  },
+                  isSelected && styles.voiceChipSelected
                 ]}
               >
-                <Text style={[styles.voiceChipLabel, isSelected && styles.voiceChipLabelSelected]}>
+                <Text
+                  style={[
+                    styles.voiceChipLabel,
+                    { color: isSelected ? readerTheme.surface : readerTheme.text },
+                    isSelected && styles.voiceChipLabelSelected
+                  ]}
+                >
                   {preset.label}
                 </Text>
-                <Text style={[styles.voiceChipTone, isSelected && styles.voiceChipLabelSelected]}>
+                <Text
+                  style={[
+                    styles.voiceChipTone,
+                    { color: isSelected ? readerTheme.surface : readerTheme.textSecondary },
+                    isSelected && styles.voiceChipLabelSelected
+                  ]}
+                >
                   {preset.tone}
                 </Text>
               </Pressable>
@@ -514,6 +635,13 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
         <Text
           style={[
             styles.voiceFootnote,
+            {
+              backgroundColor: readerTheme.surfaceMuted,
+              color:
+                matchedVoiceResult.reason !== 'unique' && voiceLookupReady
+                  ? readerTheme.primary
+                  : readerTheme.textSecondary
+            },
             matchedVoiceResult.reason !== 'unique' && voiceLookupReady && styles.voiceFootnoteFallback
           ]}
         >
@@ -526,26 +654,39 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
                 onPress={() =>
                   void (isPausedNarration ? handleResumeNarration() : handlePauseNarration())
                 }
-                style={[styles.audioButton, styles.audioPrimaryButton]}
+                style={[
+                  styles.audioButton,
+                  styles.audioPrimaryButton,
+                  { backgroundColor: readerTheme.success }
+                ]}
               >
-                <Text style={styles.audioPrimaryLabel}>
+                <Text style={[styles.audioPrimaryLabel, { color: readerTheme.successText }]}>
                   {isPausedNarration ? '继续朗读' : Platform.OS === 'android' ? '停止朗读' : '暂停朗读'}
                 </Text>
               </Pressable>
-              <Pressable onPress={() => void handleStopNarration()} style={styles.audioButton}>
-                <Text style={styles.audioButtonLabel}>结束</Text>
+              <Pressable
+                onPress={() => void handleStopNarration()}
+                style={[styles.audioButton, { backgroundColor: readerTheme.surfaceMuted }]}
+              >
+                <Text style={[styles.audioButtonLabel, { color: readerTheme.text }]}>结束</Text>
               </Pressable>
             </>
           ) : (
             <Pressable
               onPress={() => void handleStartNarration()}
-              style={[styles.audioButton, styles.audioPrimaryButton]}
+              style={[
+                styles.audioButton,
+                styles.audioPrimaryButton,
+                { backgroundColor: readerTheme.success }
+              ]}
             >
-              <Text style={styles.audioPrimaryLabel}>开始听书</Text>
+              <Text style={[styles.audioPrimaryLabel, { color: readerTheme.successText }]}>
+                开始听书
+              </Text>
             </Pressable>
           )}
         </View>
-        <Text style={styles.hint}>
+        <Text style={[styles.hint, { color: readerTheme.textSecondary }]}>
           左滑下一页，右滑上一页，也可轻触纸张外两侧快速翻页
           {Platform.OS === 'android' ? '；安卓端暂停会退化为停止' : '；iOS/Web 支持暂停与继续朗读'}
         </Text>
@@ -582,6 +723,26 @@ const styles = StyleSheet.create({
   headerMeta: {
     flex: 1
   },
+  themeButton: {
+    borderRadius: 18,
+    borderWidth: 1,
+    minWidth: 76,
+    paddingHorizontal: 12,
+    paddingVertical: 10
+  },
+  themeButtonEyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    opacity: 0.8,
+    textAlign: 'center'
+  },
+  themeButtonLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 2,
+    textAlign: 'center'
+  },
   bookTitle: {
     color: colors.text,
     fontSize: 20,
@@ -593,7 +754,9 @@ const styles = StyleSheet.create({
     marginTop: 4
   },
   readerShell: {
+    borderRadius: 32,
     flex: 1,
+    paddingVertical: 8,
     position: 'relative'
   },
   edgeAssistOverlay: {
@@ -617,8 +780,6 @@ const styles = StyleSheet.create({
   },
   edgeRail: {
     alignItems: 'center',
-    backgroundColor: 'rgba(239, 231, 218, 0.84)',
-    borderColor: '#D7C8B4',
     borderRadius: 999,
     borderWidth: 1,
     gap: 4,
@@ -646,7 +807,6 @@ const styles = StyleSheet.create({
     color: '#9E9588'
   },
   edgeHitLabel: {
-    color: '#8B775D',
     fontSize: 11,
     fontWeight: '700',
     opacity: 0.88
@@ -666,8 +826,6 @@ const styles = StyleSheet.create({
   },
   backgroundPage: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#F3E8D7',
-    borderColor: colors.border,
     borderRadius: 28,
     borderWidth: 1,
     paddingHorizontal: 15,
@@ -675,7 +833,6 @@ const styles = StyleSheet.create({
   },
   spineShadow: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#1E140B',
     borderRadius: 28
   },
   pageCurl: {
@@ -708,8 +865,6 @@ const styles = StyleSheet.create({
     opacity: 0.72
   },
   foregroundPage: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
     borderRadius: 28,
     borderWidth: 1,
     flex: 1,
@@ -719,8 +874,7 @@ const styles = StyleSheet.create({
     zIndex: 3
   },
   pageShadow: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: colors.shadow
+    ...StyleSheet.absoluteFillObject
   },
   pageTopRow: {
     alignItems: 'center',
@@ -802,8 +956,7 @@ const styles = StyleSheet.create({
     borderColor: '#AAC2C9'
   },
   voiceChipSelected: {
-    backgroundColor: colors.text,
-    borderColor: colors.text
+    borderWidth: 1
   },
   voiceChipLabel: {
     color: colors.text,
@@ -818,7 +971,7 @@ const styles = StyleSheet.create({
     textAlign: 'center'
   },
   voiceChipLabelSelected: {
-    color: colors.white
+    opacity: 1
   },
   voiceFootnote: {
     backgroundColor: colors.surfaceMuted,
@@ -847,16 +1000,14 @@ const styles = StyleSheet.create({
     paddingVertical: 10
   },
   audioPrimaryButton: {
-    backgroundColor: colors.success
+    borderWidth: 0
   },
   audioButtonLabel: {
-    color: colors.text,
     fontSize: 13,
     fontWeight: '700',
     textAlign: 'center'
   },
   audioPrimaryLabel: {
-    color: colors.white,
     fontSize: 13,
     fontWeight: '700',
     textAlign: 'center'

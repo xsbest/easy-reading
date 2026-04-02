@@ -18,6 +18,14 @@ function normalizeText(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
+function normalizeLocale(value: string) {
+  return value.toLowerCase().replace(/_/g, '-').trim();
+}
+
+function getLocaleFamily(value: string) {
+  return normalizeLocale(value).split('-')[0];
+}
+
 function stableHash(value: string) {
   let hash = 0;
 
@@ -34,25 +42,37 @@ function getVoiceHaystack(voice: Voice) {
 
 function scoreVoice(voice: Voice, preset: VoicePreset) {
   const haystack = getVoiceHaystack(voice);
+  const normalizedLanguage = normalizeLocale(voice.language);
+  const primaryLocale = preset.localeHints[0];
+  const normalizedPrimaryLocale = normalizeLocale(primaryLocale);
+  const primaryFamily = getLocaleFamily(primaryLocale);
+  const supportedFamilies = new Set(preset.localeHints.map(getLocaleFamily));
   let score = 0;
 
   for (const localeHint of preset.localeHints) {
     const normalizedHint = normalizeText(localeHint);
+    const normalizedLocaleHint = normalizeLocale(localeHint);
 
-    if (voice.language.toLowerCase() === localeHint.toLowerCase()) {
-      score += 18;
+    if (normalizedLanguage === normalizedLocaleHint) {
+      score += localeHint === primaryLocale ? 28 : 18;
       break;
     }
 
-    if (voice.language.toLowerCase().startsWith(localeHint.toLowerCase())) {
-      score += 14;
+    if (normalizedLanguage.startsWith(`${normalizedLocaleHint}-`)) {
+      score += localeHint === primaryLocale ? 22 : 14;
       break;
     }
 
     if (normalizedHint && haystack.includes(normalizedHint)) {
-      score += 10;
+      score += localeHint === primaryLocale ? 16 : 10;
       break;
     }
+  }
+
+  if (getLocaleFamily(normalizedLanguage) === primaryFamily) {
+    score += 12;
+  } else if (!supportedFamilies.has(getLocaleFamily(normalizedLanguage))) {
+    score -= 18;
   }
 
   for (const keyword of preset.keywords) {
@@ -85,7 +105,11 @@ function scoreVoice(voice: Voice, preset: VoicePreset) {
   }
 
   if (voice.quality === VoiceQuality.Enhanced) {
-    score += 2;
+    score += 4;
+  }
+
+  if (voice.quality === VoiceQuality.Default) {
+    score += 1;
   }
 
   return score;
