@@ -1,5 +1,25 @@
 # Iteration Diff
 
+## 2026-04-03 (Reader Controls Compact Layout)
+
+### 本次需求增量
+
+- 阅读页顶部控件改为更紧凑的收纳式布局，避免返回、标题、主题切换和听书入口全部堆叠
+- 主题切换改为头部小图标入口，展开后再显示主题选项
+- 听书区默认只展示当前声音与一个主按钮，详细语音预设和回退说明收纳到独立面板
+
+### 本次实现边界
+
+- 仅调整 `src/features/reader/ReaderScreen.tsx` 的局部布局与交互层级
+- 不改全局状态结构，不新增依赖，不重写翻页或朗读底层逻辑
+- 继续保留语音预设切换、主题切换与回退提示，只改变默认展示密度
+
+### 受影响模块
+
+- `src/features/reader/ReaderScreen.tsx`
+- `docs/iteration-diff.md`
+- `docs/changelog.md`
+
 ## 2026-04-03 (Doubao TTS + Book Search Research)
 
 ### 本次需求增量

@@ -65,6 +65,8 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
   const [voiceLookupReady, setVoiceLookupReady] = useState(false);
   const [readerThemeId, setReaderThemeId] = useState<ReaderThemeId>('paper');
   const [providerFootnote, setProviderFootnote] = useState(DEFAULT_PROVIDER_FOOTNOTE);
+  const [isThemeTrayOpen, setIsThemeTrayOpen] = useState(false);
+  const [isVoiceTrayOpen, setIsVoiceTrayOpen] = useState(false);
   const dragX = useRef(new Animated.Value(0)).current;
   const isAnimatingRef = useRef(false);
   const narrationTokenRef = useRef<string | null>(null);
@@ -459,6 +461,32 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
       : '正在朗读当前页'
     : '准备开始听书';
   const toneStatusLabel = matchedVoice ? matchedVoice.name : '系统默认';
+  const compactNarrationButtonLabel = isCurrentNarration
+    ? isPausedNarration
+      ? '继续'
+      : Platform.OS === 'android'
+        ? '停止'
+        : '暂停'
+    : '听书';
+
+  const handlePrimaryNarrationAction = async () => {
+    if (!isCurrentNarration) {
+      await handleStartNarration();
+      return;
+    }
+
+    if (isPausedNarration) {
+      await handleResumeNarration();
+      return;
+    }
+
+    if (Platform.OS === 'android') {
+      await handleStopNarration();
+      return;
+    }
+
+    await handlePauseNarration();
+  };
 
   return (
     <View style={[styles.screen, { backgroundColor: readerTheme.screenBackground }]}>
@@ -503,28 +531,173 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
           </Text>
           <Text style={[styles.author, { color: readerTheme.textSecondary }]}>{book.author}</Text>
         </View>
-        <Pressable
-          accessibilityLabel="切换阅读主题"
-          onPress={handleCycleTheme}
+        <View style={styles.headerActions}>
+          <Pressable
+            accessibilityLabel="打开主题切换"
+            onPress={() => {
+              setIsThemeTrayOpen((value) => !value);
+              setIsVoiceTrayOpen(false);
+            }}
+            style={[
+              styles.iconButton,
+              {
+                backgroundColor: readerTheme.surfaceMuted,
+                borderColor: readerTheme.panelBorder
+              }
+            ]}
+          >
+            <Text style={[styles.iconButtonGlyph, { color: readerTheme.primary }]}>◐</Text>
+          </Pressable>
+          <Pressable
+            accessibilityLabel="打开听书设置"
+            onPress={() => {
+              setIsVoiceTrayOpen((value) => !value);
+              setIsThemeTrayOpen(false);
+            }}
+            style={[
+              styles.iconButton,
+              {
+                backgroundColor: readerTheme.surfaceMuted,
+                borderColor: readerTheme.panelBorder
+              }
+            ]}
+          >
+            <Text style={[styles.iconButtonGlyph, { color: readerTheme.primary }]}>声</Text>
+          </Pressable>
+        </View>
+      </View>
+
+      {isThemeTrayOpen ? (
+        <View
           style={[
-            styles.themeButton,
+            styles.trayPanel,
             {
-              backgroundColor: readerTheme.primary,
-              borderColor: readerTheme.border
+              backgroundColor: readerTheme.panelBackground,
+              borderColor: readerTheme.panelBorder,
+              shadowColor: readerTheme.shadow
             }
           ]}
         >
-          <Text style={[styles.themeButtonEyebrow, { color: readerTheme.primaryText }]}>
-            主题
+          <View style={styles.trayHeader}>
+            <Text style={[styles.trayTitle, { color: readerTheme.text }]}>阅读主题</Text>
+            <Pressable
+              onPress={handleCycleTheme}
+              style={[styles.trayActionPill, { backgroundColor: readerTheme.surfaceMuted }]}
+            >
+              <Text style={[styles.trayActionLabel, { color: readerTheme.primary }]}>
+                快速切到 {nextThemeLabel}
+              </Text>
+            </Pressable>
+          </View>
+          <View style={styles.themeOptionRow}>
+            {readerThemeIds.map((themeId) => {
+              const theme = readerThemes[themeId];
+              const isSelected = themeId === readerThemeId;
+
+              return (
+                <Pressable
+                  key={theme.id}
+                  onPress={() => setReaderThemeId(themeId)}
+                  style={[
+                    styles.themeOption,
+                    {
+                      backgroundColor: isSelected ? theme.primary : readerTheme.surfaceMuted,
+                      borderColor: isSelected ? theme.primary : readerTheme.border
+                    }
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.themeOptionLabel,
+                      { color: isSelected ? theme.primaryText : readerTheme.text }
+                    ]}
+                  >
+                    {theme.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      ) : null}
+
+      {isVoiceTrayOpen ? (
+        <View
+          style={[
+            styles.trayPanel,
+            {
+              backgroundColor: readerTheme.panelBackground,
+              borderColor: readerTheme.panelBorder,
+              shadowColor: readerTheme.shadow
+            }
+          ]}
+        >
+          <Text style={[styles.trayTitle, { color: readerTheme.text }]}>听书设置</Text>
+          <View style={styles.voicePresetRow}>
+            {voicePresets.map((preset) => {
+              const isSelected = preset.id === selectedVoicePreset.id;
+
+              return (
+                <Pressable
+                  key={preset.id}
+                  onPress={() => void handleSelectPreset(preset.id)}
+                  style={[
+                    styles.voiceChip,
+                    {
+                      borderColor: isSelected ? readerTheme.primary : readerTheme.border,
+                      backgroundColor: isSelected ? readerTheme.primary : readerTheme.surfaceMuted
+                    }
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.voiceChipLabel,
+                      { color: isSelected ? readerTheme.primaryText : readerTheme.text }
+                    ]}
+                  >
+                    {preset.label}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.voiceChipTone,
+                      {
+                        color: isSelected ? readerTheme.primaryText : readerTheme.textSecondary
+                      }
+                    ]}
+                  >
+                    {preset.tone}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <Text
+            style={[
+              styles.voiceFootnote,
+              {
+                backgroundColor: readerTheme.surfaceMuted,
+                color:
+                  matchedVoiceResult.reason !== 'unique' && voiceLookupReady
+                    ? readerTheme.primary
+                    : readerTheme.textSecondary
+              }
+            ]}
+          >
+            {voiceFootnote}
           </Text>
-          <Text style={[styles.themeButtonLabel, { color: readerTheme.primaryText }]}>
-            {readerTheme.label}
+          <Text
+            style={[
+              styles.providerFootnote,
+              {
+                backgroundColor: readerTheme.surfaceMuted,
+                color: selectedCloudNarrationTarget ? readerTheme.primary : readerTheme.textSecondary
+              }
+            ]}
+          >
+            {providerFootnote}
           </Text>
-          <Text style={[styles.themeButtonNextLabel, { color: readerTheme.primaryText }]}>
-            切到 {nextThemeLabel}
-          </Text>
-        </Pressable>
-      </View>
+        </View>
+      ) : null}
 
       <View
         {...panResponder.panHandlers}
@@ -540,41 +713,6 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
           pointerEvents="none"
           style={[styles.readerShellInset, { borderColor: readerTheme.shellInset }]}
         />
-        <View style={styles.readerShellTopbar}>
-          <View
-            style={[
-              styles.statusBadge,
-              {
-                backgroundColor: readerTheme.panelBackground,
-                borderColor: readerTheme.panelBorder
-              }
-            ]}
-          >
-            <Text style={[styles.statusBadgeEyebrow, { color: readerTheme.textSecondary }]}>
-              当前状态
-            </Text>
-            <Text style={[styles.statusBadgeValue, { color: readerTheme.text }]}>
-              {narrationStatusLabel}
-            </Text>
-          </View>
-          <View
-            style={[
-              styles.statusBadge,
-              styles.statusBadgeCompact,
-              {
-                backgroundColor: readerTheme.panelBackground,
-                borderColor: readerTheme.panelBorder
-              }
-            ]}
-          >
-            <Text style={[styles.statusBadgeEyebrow, { color: readerTheme.textSecondary }]}>
-              命中音色
-            </Text>
-            <Text numberOfLines={1} style={[styles.statusBadgeValue, { color: readerTheme.text }]}>
-              {toneStatusLabel}
-            </Text>
-          </View>
-        </View>
         <View pointerEvents="box-none" style={styles.edgeAssistOverlay}>
           <Pressable
             accessibilityLabel="上一页"
@@ -789,122 +927,47 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
           </Text>
           <View style={[styles.footerThemeBadge, { backgroundColor: readerTheme.panelAccent }]}>
             <Text style={[styles.footerThemeBadgeLabel, { color: readerTheme.textSecondary }]}>
-              主题 {readerTheme.label}
+              {narrationStatusLabel}
             </Text>
           </View>
         </View>
-        <View style={styles.voicePresetRow}>
-          {voicePresets.map((preset) => {
-            const isSelected = preset.id === selectedVoicePreset.id;
-
-            return (
-              <Pressable
-                key={preset.id}
-                onPress={() => void handleSelectPreset(preset.id)}
-                style={[
-                  styles.voiceChip,
-                  preset.gender === 'female' ? styles.voiceChipFemale : styles.voiceChipMale,
-                  {
-                    borderColor: isSelected
-                      ? readerTheme.text
-                      : preset.gender === 'female'
-                        ? '#D8B2AC'
-                        : '#AAC2C9',
-                    backgroundColor: isSelected
-                      ? readerTheme.text
-                      : preset.gender === 'female'
-                        ? readerTheme.accentSoft
-                        : readerTheme.surfaceMuted
-                  },
-                  isSelected && styles.voiceChipSelected
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.voiceChipLabel,
-                    { color: isSelected ? readerTheme.surface : readerTheme.text },
-                    isSelected && styles.voiceChipLabelSelected
-                  ]}
-                >
-                  {preset.label}
-                </Text>
-                <Text
-                  style={[
-                    styles.voiceChipTone,
-                    { color: isSelected ? readerTheme.surface : readerTheme.textSecondary },
-                    isSelected && styles.voiceChipLabelSelected
-                  ]}
-                >
-                  {preset.tone}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-        <Text
+        <View
           style={[
-            styles.voiceFootnote,
+            styles.compactAudioBar,
             {
               backgroundColor: readerTheme.surfaceMuted,
-              color:
-                matchedVoiceResult.reason !== 'unique' && voiceLookupReady
-                  ? readerTheme.primary
-                  : readerTheme.textSecondary
-            },
-            matchedVoiceResult.reason !== 'unique' && voiceLookupReady && styles.voiceFootnoteFallback
-          ]}
-        >
-          {voiceFootnote}
-        </Text>
-        <Text
-          style={[
-            styles.providerFootnote,
-            {
-              backgroundColor: readerTheme.surfaceMuted,
-              color: selectedCloudNarrationTarget ? readerTheme.primary : readerTheme.textSecondary
+              borderColor: readerTheme.panelBorder
             }
           ]}
         >
-          {providerFootnote}
-        </Text>
-        <View style={styles.audioActions}>
-          {isCurrentNarration ? (
-            <>
-              <Pressable
-                onPress={() =>
-                  void (isPausedNarration ? handleResumeNarration() : handlePauseNarration())
-                }
-                style={[
-                  styles.audioButton,
-                  styles.audioPrimaryButton,
-                  { backgroundColor: readerTheme.success }
-                ]}
-              >
-                <Text style={[styles.audioPrimaryLabel, { color: readerTheme.successText }]}>
-                  {isPausedNarration ? '继续朗读' : Platform.OS === 'android' ? '停止朗读' : '暂停朗读'}
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => void handleStopNarration()}
-                style={[styles.audioButton, { backgroundColor: readerTheme.surfaceMuted }]}
-              >
-                <Text style={[styles.audioButtonLabel, { color: readerTheme.text }]}>结束</Text>
-              </Pressable>
-            </>
-          ) : (
-            <Pressable
-              onPress={() => void handleStartNarration()}
+          <View style={styles.compactAudioMeta}>
+            <Text style={[styles.compactAudioEyebrow, { color: readerTheme.textSecondary }]}>
+              当前声音
+            </Text>
+            <Text numberOfLines={1} style={[styles.compactAudioVoice, { color: readerTheme.text }]}>
+              {selectedVoicePreset.label} · {toneStatusLabel}
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => void handlePrimaryNarrationAction()}
+            style={[
+              styles.compactAudioButton,
+              { backgroundColor: isCurrentNarration ? readerTheme.primary : readerTheme.success }
+            ]}
+          >
+            <Text
               style={[
-                styles.audioButton,
-                styles.audioPrimaryButton,
-                { backgroundColor: readerTheme.success }
+                styles.compactAudioButtonLabel,
+                {
+                  color: isCurrentNarration
+                    ? readerTheme.primaryText
+                    : readerTheme.successText
+                }
               ]}
             >
-              <Text style={[styles.audioPrimaryLabel, { color: readerTheme.successText }]}>
-                开始听书
-              </Text>
-            </Pressable>
-          )}
+              {compactNarrationButtonLabel}
+            </Text>
+          </Pressable>
         </View>
         <Text style={[styles.hint, { color: readerTheme.textSecondary }]}>
           左滑下一页，右滑上一页，也可轻触纸张外两侧快速翻页
@@ -987,6 +1050,10 @@ const styles = StyleSheet.create({
   headerMeta: {
     flex: 1
   },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8
+  },
   headerEyebrow: {
     fontSize: 10,
     fontWeight: '800',
@@ -994,30 +1061,65 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     textTransform: 'uppercase'
   },
-  themeButton: {
-    borderRadius: 20,
+  iconButton: {
+    alignItems: 'center',
+    borderRadius: 999,
     borderWidth: 1,
-    minWidth: 88,
+    height: 38,
+    justifyContent: 'center',
+    width: 38
+  },
+  iconButtonGlyph: {
+    fontSize: 16,
+    fontWeight: '800'
+  },
+  trayPanel: {
+    borderRadius: 22,
+    borderWidth: 1,
+    marginBottom: 12,
     paddingHorizontal: 12,
-    paddingVertical: 10
+    paddingVertical: 12,
+    shadowOffset: {
+      width: 0,
+      height: 8
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 18
   },
-  themeButtonEyebrow: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    opacity: 0.8,
-    textAlign: 'center'
+  trayHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10
   },
-  themeButtonLabel: {
+  trayTitle: {
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  trayActionPill: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 7
+  },
+  trayActionLabel: {
+    fontSize: 11,
+    fontWeight: '700'
+  },
+  themeOptionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  themeOption: {
+    borderRadius: 999,
+    borderWidth: 1,
+    minWidth: 64,
+    paddingHorizontal: 12,
+    paddingVertical: 8
+  },
+  themeOptionLabel: {
     fontSize: 12,
     fontWeight: '700',
-    marginTop: 2,
-    textAlign: 'center'
-  },
-  themeButtonNextLabel: {
-    fontSize: 10,
-    marginTop: 3,
-    opacity: 0.7,
     textAlign: 'center'
   },
   bookTitle: {
@@ -1054,34 +1156,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 8,
     top: 8
-  },
-  readerShellTopbar: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 10,
-    paddingHorizontal: 6
-  },
-  statusBadge: {
-    borderRadius: 18,
-    borderWidth: 1,
-    flex: 1,
-    minHeight: 58,
-    paddingHorizontal: 12,
-    paddingVertical: 10
-  },
-  statusBadgeCompact: {
-    flex: 0.78
-  },
-  statusBadgeEyebrow: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.9,
-    marginBottom: 4,
-    textTransform: 'uppercase'
-  },
-  statusBadgeValue: {
-    fontSize: 14,
-    fontWeight: '700'
   },
   edgeAssistOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -1145,7 +1219,7 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     flex: 1,
     marginHorizontal: PAGE_SIDE_GUTTER,
-    marginTop: 2,
+    marginTop: 8,
     overflow: 'hidden',
     position: 'relative'
   },
@@ -1296,26 +1370,14 @@ const styles = StyleSheet.create({
   voicePresetRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-    justifyContent: 'center'
+    gap: 8
   },
   voiceChip: {
     borderRadius: 18,
     borderWidth: 1,
-    minWidth: 112,
-    paddingHorizontal: 12,
-    paddingVertical: 10
-  },
-  voiceChipFemale: {
-    backgroundColor: '#F5E7E4',
-    borderColor: '#D8B2AC'
-  },
-  voiceChipMale: {
-    backgroundColor: '#E5ECEE',
-    borderColor: '#AAC2C9'
-  },
-  voiceChipSelected: {
-    borderWidth: 1
+    minWidth: 104,
+    paddingHorizontal: 10,
+    paddingVertical: 9
   },
   voiceChipLabel: {
     color: colors.text,
@@ -1329,53 +1391,58 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textAlign: 'center'
   },
-  voiceChipLabelSelected: {
-    opacity: 1
-  },
   voiceFootnote: {
     backgroundColor: colors.surfaceMuted,
     borderRadius: 14,
     color: colors.textSecondary,
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 11,
+    lineHeight: 17,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    textAlign: 'center'
+    textAlign: 'center',
+    marginTop: 10
   },
   providerFootnote: {
     backgroundColor: colors.surfaceMuted,
     borderRadius: 14,
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 11,
+    lineHeight: 17,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    textAlign: 'center'
+    textAlign: 'center',
+    marginTop: 8
   },
-  voiceFootnoteFallback: {
-    color: colors.primary
-  },
-  audioActions: {
+  compactAudioBar: {
+    alignItems: 'center',
+    borderRadius: 22,
+    borderWidth: 1,
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    justifyContent: 'center'
+    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10
   },
-  audioButton: {
-    backgroundColor: colors.surfaceMuted,
+  compactAudioMeta: {
+    flex: 1,
+    minWidth: 0
+  },
+  compactAudioEyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    marginBottom: 4
+  },
+  compactAudioVoice: {
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 18
+  },
+  compactAudioButton: {
     borderRadius: 999,
-    minWidth: 108,
+    minWidth: 88,
     paddingHorizontal: 16,
     paddingVertical: 10
   },
-  audioPrimaryButton: {
-    borderWidth: 0
-  },
-  audioButtonLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    textAlign: 'center'
-  },
-  audioPrimaryLabel: {
+  compactAudioButtonLabel: {
     fontSize: 13,
     fontWeight: '700',
     textAlign: 'center'
