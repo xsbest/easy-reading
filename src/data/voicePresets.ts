@@ -1,5 +1,13 @@
 import { VoicePreset } from '../types/book';
 
+export type CloudNarrationTarget = {
+  label: string;
+  locale: string;
+  modelId: string;
+  provider: 'elevenlabs';
+  voiceId: string;
+};
+
 export const voicePresets: VoicePreset[] = [
   {
     id: 'mandarin-soft-female',
@@ -73,3 +81,20 @@ export const voicePresets: VoicePreset[] = [
     avoidKeywords: ['female', 'woman', 'xiaoxiao', 'xiaoyi', 'tingting', 'huihui', 'samantha']
   }
 ];
+
+export const cloudNarrationTargetsByPresetId: Partial<Record<VoicePreset['id'], CloudNarrationTarget>> = {
+  'mandarin-soft-female': {
+    label: 'ElevenLabs 中文女声 PoC',
+    locale: 'zh-CN',
+    modelId: 'eleven_multilingual_v2',
+    provider: 'elevenlabs',
+    voiceId: 'EXAVITQu4vr4xnSDxMaL'
+  },
+  'mandarin-steady-male': {
+    label: 'ElevenLabs 中文男声 PoC',
+    locale: 'zh-CN',
+    modelId: 'eleven_multilingual_v2',
+    provider: 'elevenlabs',
+    voiceId: 'onwK4e9ZLuTAKqWW03F9'
+  }
+};

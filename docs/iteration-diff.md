@@ -1,5 +1,29 @@
 # Iteration Diff
 
+## 2026-04-03 (Chinese ElevenLabs PoC)
+
+### 本次需求增量
+
+- 中文朗读链路新增 ElevenLabs PoC，优先尝试云端中文音色
+- 不新增客户端依赖，继续保留 `expo-speech` 作为默认回退方案
+- 阅读页增加云端朗读状态提示，让用户能看见当前是否命中 ElevenLabs PoC
+
+### 本次实现边界
+
+- 仅中文预设接入 ElevenLabs
+- 仅在运行环境支持直接播放生成音频时播放云端结果
+- 未配置 `EXPO_PUBLIC_ELEVENLABS_API_KEY`、云端请求失败或环境不支持时自动回退到本地朗读
+- 不引入新的原生音频 SDK，不在本轮补服务端代理或缓存
+
+### 受影响模块
+
+- `src/data/voicePresets.ts`
+- `src/features/reader/elevenlabs.ts`
+- `src/features/reader/ReaderScreen.tsx`
+- `docs/spec.md`
+- `docs/open-issues.md`
+- `docs/changelog.md`
+
 ## 2026-03-29 (Reader Bugfix + UI Density Iteration)
 
 ### 本次需求增量

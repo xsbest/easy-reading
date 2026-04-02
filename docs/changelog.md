@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-04-03T10:00:00Z
+- 中文预设增加 ElevenLabs PoC 目标配置，阅读页朗读时会优先尝试云端中文音色
+- 新增 `src/features/reader/elevenlabs.ts`，用 `fetch` 请求 ElevenLabs REST API，并在缺少 API Key、请求失败或环境不支持时返回可见回退原因
+- 阅读页增加云端朗读状态提示，并在中文 PoC 不可用时自动回退 `expo-speech`
+
 ## 2026-04-02T18:27:13Z
 - 新增 `docs/voice-provider-research.md`，记录“热门高质量语音包”调研结果、候选方案和取舍结论
 - 明确当前 `expo-speech` 方案只能使用设备已有 voice；若要显著提升音质与咬字，需要批准替换底层 TTS 能力

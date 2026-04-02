@@ -5,8 +5,8 @@ import {
   Animated,
   Easing,
   PanResponder,
-  Platform,
   Pressable,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,10 +14,11 @@ import {
   View
 } from 'react-native';
 
-import { voicePresets } from '../../data/voicePresets';
+import { cloudNarrationTargetsByPresetId, voicePresets } from '../../data/voicePresets';
 import { useLibrary } from '../../state/library-context';
 import { colors, readerThemeIds, ReaderThemeId, readerThemes } from '../../theme/tokens';
 import { Book } from '../../types/book';
+import { synthesizeNarrationWithElevenLabs } from './elevenlabs';
 import { resolveVoiceAssignments, VoiceMatchResult } from './voice-utils';
 
 type ReaderScreenProps = {
@@ -35,6 +36,8 @@ const DEFAULT_VOICE_MATCH: VoiceMatchResult = {
   score: 0,
   voice: null
 };
+
+const DEFAULT_PROVIDER_FOOTNOTE = '当前朗读使用设备语音。中文预设可尝试 ElevenLabs PoC，失败时会自动回退本地朗读。';
 
 export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
   const {
@@ -61,12 +64,16 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
   const [availableVoices, setAvailableVoices] = useState<Voice[]>([]);
   const [voiceLookupReady, setVoiceLookupReady] = useState(false);
   const [readerThemeId, setReaderThemeId] = useState<ReaderThemeId>('paper');
+  const [providerFootnote, setProviderFootnote] = useState(DEFAULT_PROVIDER_FOOTNOTE);
   const dragX = useRef(new Animated.Value(0)).current;
   const isAnimatingRef = useRef(false);
   const narrationTokenRef = useRef<string | null>(null);
+  const webNarrationAudioRef = useRef<HTMLAudioElement | null>(null);
+  const webNarrationUrlRef = useRef<string | null>(null);
 
   const selectedVoicePreset =
     voicePresets.find((preset) => preset.id === selectedVoicePresetId) ?? voicePresets[0];
+  const selectedCloudNarrationTarget = cloudNarrationTargetsByPresetId[selectedVoicePreset.id] ?? null;
   const voiceAssignments = useMemo(
     () => resolveVoiceAssignments(availableVoices, voicePresets),
     [availableVoices]
@@ -152,8 +159,28 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
     stopNarration();
   };
 
+  const clearWebNarrationAudio = () => {
+    const currentAudio = webNarrationAudioRef.current;
+
+    if (currentAudio) {
+      currentAudio.onended = null;
+      currentAudio.onerror = null;
+      currentAudio.pause();
+      currentAudio.src = '';
+      webNarrationAudioRef.current = null;
+    }
+
+    if (webNarrationUrlRef.current) {
+      if (typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
+        URL.revokeObjectURL(webNarrationUrlRef.current);
+      }
+      webNarrationUrlRef.current = null;
+    }
+  };
+
   const stopActiveNarration = async () => {
     narrationTokenRef.current = null;
+    clearWebNarrationAudio();
     await Speech.stop();
     stopNarration();
   };
@@ -229,10 +256,22 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
 
   useEffect(() => {
     return () => {
+      clearWebNarrationAudio();
       void Speech.stop();
       syncStopNarration();
     };
   }, []);
+
+  useEffect(() => {
+    if (!selectedCloudNarrationTarget) {
+      setProviderFootnote(DEFAULT_PROVIDER_FOOTNOTE);
+      return;
+    }
+
+    setProviderFootnote(
+      `${selectedCloudNarrationTarget.label} 已就绪，中文朗读会优先请求云端音色；若环境不支持会自动回退本地朗读。`
+    );
+  }, [selectedCloudNarrationTarget]);
 
   const panResponder = useMemo(
     () =>
@@ -267,11 +306,69 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
 
   const handleStartNarration = async () => {
     const token = `${book.id}:${page}:${Date.now()}`;
+    const pageText = book.pages[page];
 
     narrationTokenRef.current = token;
     await Speech.stop();
+    clearWebNarrationAudio();
+
+    if (selectedCloudNarrationTarget) {
+      setProviderFootnote(`正在连接 ${selectedCloudNarrationTarget.label}...`);
+
+      const cloudResult = await synthesizeNarrationWithElevenLabs({
+        target: selectedCloudNarrationTarget,
+        text: pageText
+      });
+
+      if (narrationTokenRef.current !== token) {
+        if (cloudResult.ok) {
+          if (typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
+            URL.revokeObjectURL(cloudResult.audioUrl);
+          }
+        }
+        return;
+      }
+
+      if (cloudResult.ok) {
+        try {
+          const audio = new globalThis.Audio(cloudResult.audioUrl);
+
+          webNarrationAudioRef.current = audio;
+          webNarrationUrlRef.current = cloudResult.audioUrl;
+          startNarration(book.id, page);
+          setProviderFootnote(`${cloudResult.providerLabel} 播放中，当前页中文朗读已切到云端 PoC。`);
+
+          audio.onended = () => {
+            if (narrationTokenRef.current === token) {
+              clearWebNarrationAudio();
+              syncStopNarration();
+            }
+          };
+          audio.onerror = () => {
+            if (narrationTokenRef.current === token) {
+              clearWebNarrationAudio();
+              syncStopNarration();
+              setProviderFootnote(`${cloudResult.providerLabel} 播放失败，已停止本次朗读。`);
+            }
+          };
+
+          await audio.play();
+          return;
+        } catch (error) {
+          clearWebNarrationAudio();
+          const detail = error instanceof Error ? error.message : '浏览器拒绝播放';
+
+          setProviderFootnote(
+            `${cloudResult.providerLabel} 播放未成功（${detail}），已回退设备语音朗读。`
+          );
+        }
+      } else {
+        setProviderFootnote(`${cloudResult.providerLabel} 不可用：${cloudResult.detail}`);
+      }
+    }
+
     startNarration(book.id, page);
-    Speech.speak(book.pages[page], {
+    Speech.speak(pageText, {
       language: matchedVoice?.language ?? selectedVoicePreset.localeHints[0],
       pitch: selectedVoicePreset.pitch,
       rate: selectedVoicePreset.rate,
@@ -295,6 +392,12 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
   };
 
   const handlePauseNarration = async () => {
+    if (webNarrationAudioRef.current) {
+      webNarrationAudioRef.current.pause();
+      pauseNarration();
+      return;
+    }
+
     if (Platform.OS === 'android') {
       await stopActiveNarration();
       return;
@@ -305,6 +408,12 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
   };
 
   const handleResumeNarration = async () => {
+    if (webNarrationAudioRef.current) {
+      await webNarrationAudioRef.current.play();
+      resumeNarration();
+      return;
+    }
+
     if (Platform.OS === 'android') {
       await handleStartNarration();
       return;
@@ -647,6 +756,17 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
         >
           {voiceFootnote}
         </Text>
+        <Text
+          style={[
+            styles.providerFootnote,
+            {
+              backgroundColor: readerTheme.surfaceMuted,
+              color: selectedCloudNarrationTarget ? readerTheme.primary : readerTheme.textSecondary
+            }
+          ]}
+        >
+          {providerFootnote}
+        </Text>
         <View style={styles.audioActions}>
           {isCurrentNarration ? (
             <>
@@ -977,6 +1097,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceMuted,
     borderRadius: 14,
     color: colors.textSecondary,
+    fontSize: 12,
+    lineHeight: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    textAlign: 'center'
+  },
+  providerFootnote: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 14,
     fontSize: 12,
     lineHeight: 18,
     paddingHorizontal: 12,

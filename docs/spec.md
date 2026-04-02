@@ -7,7 +7,7 @@
 - 保持 Expo Managed Workflow
 - 保持 React Native + TypeScript
 - 保持顶层界面状态切换，不引入新的导航层
-- 听书仍基于 `expo-speech`
+- 听书保持 `expo-speech` 为默认回退链路，并在中文预设上补充 ElevenLabs PoC 请求分支
 
 ### 1.2 本轮不变项
 
@@ -66,10 +66,11 @@ src/
 ### 4.2 语音播放与回退提示
 
 1. 用户点击播放时，阅读页读取当前 `matchedVoice`
-2. 若有命中 voice，则把 `identifier` 传给 `expo-speech`
-3. 若未命中，则不阻塞播放，但以轻量文案说明当前使用默认或近似 voice
-4. 用户切换语音预设、翻页或关闭阅读页时，先执行 `Speech.stop()`，再更新全局朗读状态
-5. 回退提示除“是否命中”外，还要体现当前预设目标音色组，减少用户把系统回退误判为“语音包损坏”
+2. 若当前预设是中文 PoC 目标组，则先尝试向 ElevenLabs 请求合成音频
+3. 若云端请求成功且运行环境支持直接播放生成音频，则优先播放云端结果
+4. 若未命中系统 voice、云端请求失败、缺少 API Key 或运行环境不支持云端音频播放，则不阻塞播放，回退到 `expo-speech`
+5. 用户切换语音预设、翻页或关闭阅读页时，先停止当前朗读，再更新全局朗读状态
+6. 回退提示除“是否命中”外，还要体现当前预设目标音色组，以及 ElevenLabs PoC 是否生效，减少用户把系统回退误判为“语音包损坏”
 
 ### 4.3 阅读页提示布局
 
@@ -121,11 +122,18 @@ src/
 
 ### 7.2 本轮明确不引入
 
-- 新的 TTS SDK 或云服务
+- 新的 TTS SDK
 - 外部 CDN 语音包下载、音色资源管理或自建离线合成引擎
 - 持久化库
 - Reanimated / Gesture Handler
 - 导航库
+
+### 7.3 本轮新增接入约束
+
+- ElevenLabs 仅通过页面内 `fetch` 直接请求 REST API，不新增客户端 SDK
+- 默认读取 `EXPO_PUBLIC_ELEVENLABS_API_KEY`
+- 本轮只接中文预设 PoC，不改英文朗读链路
+- 若运行环境缺少 `Audio` / `Blob` / `URL.createObjectURL` 能力，则直接回退到 `expo-speech`
 
 ## 8. 边界条件
 
