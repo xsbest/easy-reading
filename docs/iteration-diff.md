@@ -1,5 +1,26 @@
 # Iteration Diff
 
+## 2026-04-03 (Doubao TTS + Book Search Research)
+
+### 本次需求增量
+
+- 调研“豆包语音包”能否接入当前阅读器
+- 调研“书籍搜索功能”在当前项目中的最小可行方案
+- 输出候选方案、依赖影响和取舍结论，不直接修改业务代码
+
+### 本次实现边界
+
+- 仅更新 `docs/` 调研结论
+- 不改 `src/features/reader/`、`src/data/` 现有业务逻辑
+- 不新增依赖，不替换当前朗读底层
+
+### 受影响模块
+
+- `docs/voice-provider-research.md`
+- `docs/open-issues.md`
+- `docs/iteration-diff.md`
+- `docs/changelog.md`
+
 ## 2026-04-03 (Reader Theme Refresh)
 
 ### 本次需求增量
