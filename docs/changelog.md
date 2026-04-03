@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-04-03T14:25:00Z
+- 更新 `docs/voice-provider-research.md`，补充“男声中英文都用豆包、女声都用秋芝”的候选方案与取舍结论
+- 明确该诉求不能通过 `voicePresets` 恢复，若要真实落地，必须批准替换 `expo-speech` 主朗读链路并补音频播放能力
+- 同步 `docs/open-issues.md` 与 `docs/iteration-diff.md`，记录豆包 / 秋芝能力待核实、审批前不修改 `src/` 实现
+
 ## 2026-04-03T13:45:00Z
 - 更新 `docs/voice-provider-research.md`，补充“全量切回豆包、女声固定秋芝”的候选方案与取舍结论
 - 明确该诉求不能通过修改 `voicePresets` 直接实现；若要落地，必须批准替换当前 `expo-speech` 主朗读链路
