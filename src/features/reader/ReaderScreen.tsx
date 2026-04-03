@@ -1,4 +1,5 @@
 import * as Speech from 'expo-speech';
+import { StatusBar } from 'expo-status-bar';
 import { Voice } from 'expo-speech';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -31,6 +32,7 @@ const EDGE_TAP_WIDTH = 56;
 const MAX_DRAG_RATIO = 0.92;
 const PAGE_SIDE_GUTTER = 18;
 const PAGE_PREVIEW_LINE_COUNT = 17;
+const CHROME_AUTO_HIDE_DELAY_MS = 2200;
 const DEFAULT_VOICE_MATCH: VoiceMatchResult = {
   reason: 'default',
   score: 0,
@@ -63,14 +65,19 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
     stopNarration,
     setVoicePreset
   } = useLibrary();
-  const { width } = useWindowDimensions();
-  const pageWidth = Math.max(width - 40 - PAGE_SIDE_GUTTER * 2, 248);
+  const { height, width } = useWindowDimensions();
+  const horizontalInset = Math.min(Math.max(width * 0.04, 12), 22);
+  const shellVerticalInset = Math.min(Math.max(height * 0.018, 8), 18);
+  const shellRadius = width < 390 ? 26 : 32;
+  const pageFrameHorizontalInset = width < 390 ? 12 : 16;
+  const pageWidth = Math.max(width - horizontalInset * 2 - PAGE_SIDE_GUTTER * 2, 248);
   const page = currentPageByBookId[book.id] ?? 0;
   const [dragDirection, setDragDirection] = useState<-1 | 0 | 1>(0);
   const [availableVoices, setAvailableVoices] = useState<Voice[]>([]);
   const [voiceLookupReady, setVoiceLookupReady] = useState(false);
   const [readerThemeId, setReaderThemeId] = useState<ReaderThemeId>('paper');
   const [providerFootnote, setProviderFootnote] = useState(DEFAULT_PROVIDER_FOOTNOTE);
+  const [isChromeVisible, setIsChromeVisible] = useState(false);
   const [isThemeTrayOpen, setIsThemeTrayOpen] = useState(false);
   const [isVoiceTrayOpen, setIsVoiceTrayOpen] = useState(false);
   const dragX = useRef(new Animated.Value(0)).current;
@@ -78,6 +85,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
   const narrationTokenRef = useRef<string | null>(null);
   const webNarrationAudioRef = useRef<HTMLAudioElement | null>(null);
   const webNarrationUrlRef = useRef<string | null>(null);
+  const chromeHideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const selectedVoicePreset =
     voicePresets.find((preset) => preset.id === selectedVoicePresetId) ?? voicePresets[0];
@@ -160,6 +168,27 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
     dragX.setValue(0);
     setDragDirection(0);
     isAnimatingRef.current = false;
+  };
+
+  const clearChromeHideTimeout = () => {
+    if (chromeHideTimeoutRef.current) {
+      clearTimeout(chromeHideTimeoutRef.current);
+      chromeHideTimeoutRef.current = null;
+    }
+  };
+
+  const scheduleChromeAutoHide = () => {
+    clearChromeHideTimeout();
+    chromeHideTimeoutRef.current = setTimeout(() => {
+      setIsThemeTrayOpen(false);
+      setIsVoiceTrayOpen(false);
+      setIsChromeVisible(false);
+    }, CHROME_AUTO_HIDE_DELAY_MS);
+  };
+
+  const revealChrome = () => {
+    setIsChromeVisible(true);
+    scheduleChromeAutoHide();
   };
 
   const syncStopNarration = () => {
@@ -264,6 +293,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
 
   useEffect(() => {
     return () => {
+      clearChromeHideTimeout();
       clearWebNarrationAudio();
       void Speech.stop();
       syncStopNarration();
@@ -280,6 +310,24 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
       `${selectedCloudNarrationTarget.label} 已就绪，中文朗读会优先请求云端音色；若环境不支持会自动回退本地朗读。`
     );
   }, [selectedCloudNarrationTarget]);
+
+  useEffect(() => {
+    if (!isChromeVisible) {
+      clearChromeHideTimeout();
+      return;
+    }
+
+    if (isThemeTrayOpen || isVoiceTrayOpen) {
+      clearChromeHideTimeout();
+      return;
+    }
+
+    scheduleChromeAutoHide();
+
+    return () => {
+      clearChromeHideTimeout();
+    };
+  }, [isChromeVisible, isThemeTrayOpen, isVoiceTrayOpen, page]);
 
   const panResponder = useMemo(
     () =>
@@ -451,6 +499,19 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
 
   const handleCycleTheme = () => {
     setReaderThemeId(nextReaderThemeId);
+    revealChrome();
+  };
+
+  const handleToggleChrome = () => {
+    if (isChromeVisible) {
+      clearChromeHideTimeout();
+      setIsThemeTrayOpen(false);
+      setIsVoiceTrayOpen(false);
+      setIsChromeVisible(false);
+      return;
+    }
+
+    revealChrome();
   };
 
   const voiceFootnote = !voiceLookupReady
@@ -497,6 +558,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
 
   return (
     <View style={[styles.screen, { backgroundColor: readerTheme.screenBackground }]}>
+      <StatusBar hidden={!isChromeVisible} style={readerThemeId === 'paper' || readerThemeId === 'mist' ? 'dark' : 'light'} />
       <View pointerEvents="none" style={styles.ambientLayer}>
         <View
           style={[
@@ -516,12 +578,18 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
       </View>
 
       <View
+        pointerEvents={isChromeVisible ? 'auto' : 'none'}
         style={[
           styles.headerCard,
           {
             backgroundColor: readerTheme.panelBackground,
             borderColor: readerTheme.panelBorder,
-            shadowColor: readerTheme.shadow
+            shadowColor: readerTheme.shadow,
+            left: horizontalInset,
+            opacity: isChromeVisible ? 1 : 0,
+            right: horizontalInset,
+            top: shellVerticalInset,
+            transform: [{ translateY: isChromeVisible ? 0 : -18 }]
           }
         ]}
       >
@@ -543,6 +611,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
           <Pressable
             accessibilityLabel="打开主题切换"
             onPress={() => {
+              revealChrome();
               setIsThemeTrayOpen((value) => !value);
               setIsVoiceTrayOpen(false);
             }}
@@ -561,6 +630,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
           <Pressable
             accessibilityLabel="打开听书设置"
             onPress={() => {
+              revealChrome();
               setIsVoiceTrayOpen((value) => !value);
               setIsThemeTrayOpen(false);
             }}
@@ -588,13 +658,16 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
           styles.readerShell,
           {
             backgroundColor: readerTheme.shellBackground,
-            borderColor: readerTheme.shellBorder
+            borderColor: readerTheme.shellBorder,
+            borderRadius: shellRadius,
+            marginHorizontal: horizontalInset,
+            marginVertical: shellVerticalInset
           }
         ]}
       >
         <View
           pointerEvents="none"
-          style={[styles.readerShellInset, { borderColor: readerTheme.shellInset }]}
+          style={[styles.readerShellInset, { borderColor: readerTheme.shellInset, borderRadius: shellRadius - 6 }]}
         />
         {isThemeTrayOpen ? (
           <View
@@ -604,7 +677,8 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
               {
                 backgroundColor: readerTheme.panelBackground,
                 borderColor: readerTheme.panelBorder,
-                shadowColor: readerTheme.shadow
+                shadowColor: readerTheme.shadow,
+                top: 74
               }
             ]}
           >
@@ -666,7 +740,8 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
               {
                 backgroundColor: readerTheme.panelBackground,
                 borderColor: readerTheme.panelBorder,
-                shadowColor: readerTheme.shadow
+                shadowColor: readerTheme.shadow,
+                top: 74
               }
             ]}
           >
@@ -731,7 +806,13 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
             accessibilityLabel="上一页"
             disabled={!canGoPrevious || isAnimatingRef.current}
             onPress={() => turnPage(1)}
-            style={[styles.edgeHitArea, styles.edgeHitAreaLeft]}
+            style={[
+              styles.edgeHitArea,
+              styles.edgeHitAreaLeft,
+              {
+                top: isChromeVisible ? 92 : 24
+              }
+            ]}
           >
             <View
               style={[
@@ -768,7 +849,13 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
             accessibilityLabel="下一页"
             disabled={!canGoNext || isAnimatingRef.current}
             onPress={() => turnPage(-1)}
-            style={[styles.edgeHitArea, styles.edgeHitAreaRight]}
+            style={[
+              styles.edgeHitArea,
+              styles.edgeHitAreaRight,
+              {
+                top: isChromeVisible ? 92 : 24
+              }
+            ]}
           >
             <View
               style={[
@@ -803,14 +890,22 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
           </Pressable>
         </View>
 
-        <View style={styles.pageFrame}>
+        <View
+          style={[
+            styles.pageFrame,
+            {
+              marginHorizontal: pageFrameHorizontalInset
+            }
+          ]}
+        >
           <Animated.View
             pointerEvents="none"
             style={[
               styles.backgroundPage,
               {
                 backgroundColor: readerTheme.surfaceRaised,
-                borderColor: readerTheme.border
+                borderColor: readerTheme.border,
+                borderRadius: shellRadius - 4
               },
               {
                 opacity: backgroundOpacity,
@@ -887,7 +982,8 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
               styles.foregroundPage,
               {
                 backgroundColor: readerTheme.surface,
-                borderColor: readerTheme.border
+                borderColor: readerTheme.border,
+                borderRadius: shellRadius - 4
               },
               {
                 transform: [
@@ -904,7 +1000,16 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
               pointerEvents="none"
               style={[styles.pageShadow, { backgroundColor: readerTheme.shadow, opacity: pageShadowOpacity }]}
             />
-            <View pointerEvents="none" style={[styles.pageTrim, { borderColor: readerTheme.pageTrim }]} />
+            <View
+              pointerEvents="none"
+              style={[
+                styles.pageTrim,
+                {
+                  borderColor: readerTheme.pageTrim,
+                  borderRadius: shellRadius - 10
+                }
+              ]}
+            />
             <View style={styles.pageTopRow}>
               <View style={[styles.chapterPill, { backgroundColor: book.accentColor }]}>
                 <Text style={styles.chapterPillLabel}>卷页阅读</Text>
@@ -913,24 +1018,50 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
                 第 {page + 1} 页 · 共 {book.pages.length} 页
               </Text>
             </View>
-            <ScrollView
-              contentContainerStyle={styles.readerContent}
-              showsVerticalScrollIndicator={false}
-              style={styles.readerScroll}
-            >
-              <Text style={[styles.pageBody, { color: readerTheme.text }]}>{book.pages[page]}</Text>
-            </ScrollView>
+            <Pressable onPress={handleToggleChrome} style={styles.readerTapZone}>
+              <ScrollView
+                contentContainerStyle={styles.readerContent}
+                showsVerticalScrollIndicator={false}
+                style={styles.readerScroll}
+              >
+                <Text style={[styles.pageBody, { color: readerTheme.text }]}>{book.pages[page]}</Text>
+              </ScrollView>
+            </Pressable>
           </Animated.View>
         </View>
+
+        {!isChromeVisible ? (
+          <View pointerEvents="none" style={styles.minimalOverlay}>
+            <View
+              style={[
+                styles.minimalOverlayPill,
+                {
+                  backgroundColor: readerTheme.panelBackground,
+                  borderColor: readerTheme.panelBorder
+                }
+              ]}
+            >
+              <Text style={[styles.minimalOverlayText, { color: readerTheme.textSecondary }]}>
+                第 {page + 1} 页 / 轻触唤出菜单
+              </Text>
+            </View>
+          </View>
+        ) : null}
       </View>
 
       <View
+        pointerEvents={isChromeVisible ? 'auto' : 'none'}
         style={[
           styles.footerPanel,
           {
             backgroundColor: readerTheme.panelBackground,
             borderColor: readerTheme.panelBorder,
-            shadowColor: readerTheme.shadow
+            bottom: shellVerticalInset,
+            left: horizontalInset,
+            opacity: isChromeVisible ? 1 : 0,
+            right: horizontalInset,
+            shadowColor: readerTheme.shadow,
+            transform: [{ translateY: isChromeVisible ? 0 : 18 }]
           }
         ]}
       >
@@ -982,9 +1113,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     flex: 1,
     overflow: 'hidden',
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-    paddingTop: 56
+    paddingBottom: 0,
+    paddingHorizontal: 0,
+    paddingTop: 0
   },
   ambientLayer: {
     ...StyleSheet.absoluteFillObject
@@ -1019,11 +1150,11 @@ const styles = StyleSheet.create({
   },
   headerCard: {
     alignItems: 'center',
+    position: 'absolute',
     borderRadius: 28,
     borderWidth: 1,
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 12,
     paddingHorizontal: 14,
     paddingVertical: 10,
     shadowOffset: {
@@ -1031,7 +1162,8 @@ const styles = StyleSheet.create({
       height: 10
     },
     shadowOpacity: 0.12,
-    shadowRadius: 24
+    shadowRadius: 24,
+    zIndex: 8
   },
   backButton: {
     backgroundColor: colors.surfaceMuted,
@@ -1083,7 +1215,6 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 18,
-    top: 14,
     zIndex: 7
   },
   themeTray: {
@@ -1149,9 +1280,9 @@ const styles = StyleSheet.create({
     borderRadius: 34,
     borderWidth: 1,
     flex: 1,
-    paddingBottom: 12,
-    paddingHorizontal: 10,
-    paddingTop: 10,
+    paddingBottom: 8,
+    paddingHorizontal: 8,
+    paddingTop: 8,
     position: 'relative',
     shadowOffset: {
       width: 0,
@@ -1231,8 +1362,7 @@ const styles = StyleSheet.create({
   pageFrame: {
     borderRadius: 28,
     flex: 1,
-    marginHorizontal: PAGE_SIDE_GUTTER,
-    marginTop: 10,
+    marginTop: 8,
     overflow: 'hidden',
     position: 'relative'
   },
@@ -1282,7 +1412,7 @@ const styles = StyleSheet.create({
     flex: 1,
     overflow: 'hidden',
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 10,
     zIndex: 3
   },
   pageShadow: {
@@ -1302,7 +1432,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8
+    marginBottom: 6
   },
   pageMetaLabel: {
     color: colors.textSecondary,
@@ -1331,26 +1461,29 @@ const styles = StyleSheet.create({
   readerScroll: {
     flex: 1
   },
+  readerTapZone: {
+    flex: 1
+  },
   readerContent: {
     flexGrow: 1,
-    paddingBottom: 8
+    paddingBottom: 26
   },
   pagePreview: {
     color: colors.textSecondary,
-    fontSize: 16,
-    lineHeight: 28
+    fontSize: 15,
+    lineHeight: 25
   },
   pageBody: {
     color: colors.text,
-    fontSize: 16,
+    fontSize: 17,
     letterSpacing: 0.2,
-    lineHeight: 28,
+    lineHeight: 31,
     paddingBottom: 6
   },
   footerPanel: {
     borderRadius: 26,
     borderWidth: 1,
-    marginTop: 12,
+    position: 'absolute',
     paddingHorizontal: 12,
     paddingVertical: 12,
     shadowOffset: {
@@ -1358,7 +1491,8 @@ const styles = StyleSheet.create({
       height: 12
     },
     shadowOpacity: 0.12,
-    shadowRadius: 28
+    shadowRadius: 28,
+    zIndex: 8
   },
   voicePresetRow: {
     flexDirection: 'row',
@@ -1433,5 +1567,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     textAlign: 'center'
+  },
+  minimalOverlay: {
+    alignItems: 'center',
+    bottom: 18,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    zIndex: 5
+  },
+  minimalOverlayPill: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 8
+  },
+  minimalOverlayText: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.2
   }
 });

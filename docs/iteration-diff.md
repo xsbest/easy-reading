@@ -1,5 +1,26 @@
 # Iteration Diff
 
+## 2026-04-03 (Immersive Reader Responsive Refresh)
+
+### 本次需求增量
+
+- 阅读页改成更偏移动端沉浸式的显隐布局，默认隐藏状态栏和头尾控制，轻触正文后再唤出菜单
+- 顶部信息栏与底部听书条改为悬浮覆盖，不再持续挤压正文高度
+- 继续收紧页内留白并补长 mock 文本，验证小屏设备上的单页信息密度
+
+### 本次实现边界
+
+- 仅调整 `src/features/reader/ReaderScreen.tsx` 和 `src/data/mockBooks.ts` 的局部体验
+- 不改书架页，不新增依赖，不重写翻页动画或听书底层
+- 文档仅同步本轮沉浸式显隐交互和内容密度变化
+
+### 受影响模块
+
+- `src/features/reader/ReaderScreen.tsx`
+- `src/data/mockBooks.ts`
+- `docs/iteration-diff.md`
+- `docs/changelog.md`
+
 ## 2026-04-03 (Reader Overlay Controls Tuning)
 
 ### 本次需求增量
