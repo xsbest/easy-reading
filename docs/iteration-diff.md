@@ -1,5 +1,25 @@
 # Iteration Diff
 
+## 2026-04-03 (Reader Overlay Controls Tuning)
+
+### 本次需求增量
+
+- 阅读页顶部布局继续收紧，避免头部信息、主题切换和听书控件把内容区压得过窄
+- 主题切换改为更小的 logo 化入口，主题面板以悬浮托盘方式展开
+- 听书区默认只保留当前声音和主按钮，语音预设面板收纳到头部小入口中
+
+### 本次实现边界
+
+- 仅继续调整 `src/features/reader/ReaderScreen.tsx` 的局部布局与样式
+- 不改朗读逻辑、不改翻页逻辑、不新增全局状态与依赖
+- 文档仅同步本次控件收纳与布局层级变化
+
+### 受影响模块
+
+- `src/features/reader/ReaderScreen.tsx`
+- `docs/iteration-diff.md`
+- `docs/changelog.md`
+
 ## 2026-04-03 (Reader Controls Compact Layout)
 
 ### 本次需求增量
