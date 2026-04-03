@@ -1,5 +1,26 @@
 # Iteration Diff
 
+## 2026-04-03 (Doubao Voice Mapping Research Refresh)
+
+### 本次需求增量
+
+- 调研“豆包语音包又没了，请用回豆包语音包，男女生中英文都用豆包，女生用秋芝”在当前项目中的可行落地方式
+- 输出候选方案、依赖影响和取舍结论，不直接修改阅读器代码
+- 明确该诉求是否属于预设表调整，还是需要替换朗读底层
+
+### 本次实现边界
+
+- 仅更新 `docs/` 研究结论
+- 不改 `src/features/reader/`、`src/data/` 现有实现
+- 不新增依赖，不直接替换 `expo-speech`
+
+### 受影响模块
+
+- `docs/voice-provider-research.md`
+- `docs/open-issues.md`
+- `docs/iteration-diff.md`
+- `docs/changelog.md`
+
 ## 2026-04-03 (Immersive Reader Responsive Refresh)
 
 ### 本次需求增量
