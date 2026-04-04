@@ -81,6 +81,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
   const [isThemeTrayOpen, setIsThemeTrayOpen] = useState(false);
   const [isVoiceTrayOpen, setIsVoiceTrayOpen] = useState(false);
   const dragX = useRef(new Animated.Value(0)).current;
+  const chromeProgress = useRef(new Animated.Value(0)).current;
   const isAnimatingRef = useRef(false);
   const narrationTokenRef = useRef<string | null>(null);
   const webNarrationAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -163,6 +164,26 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
     inputRange: [-pageWidth * MAX_DRAG_RATIO, 0, pageWidth * MAX_DRAG_RATIO],
     outputRange: [4, 0, 4]
   });
+  const headerTranslateY = chromeProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-96, 0]
+  });
+  const footerTranslateY = chromeProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [110, 0]
+  });
+  const chromeOpacity = chromeProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1]
+  });
+  const chromeDrawerShadowOpacity = chromeProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 0.16]
+  });
+  const edgeRailOpacity = chromeProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1]
+  });
 
   const resetDrag = () => {
     dragX.setValue(0);
@@ -182,12 +203,27 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
     chromeHideTimeoutRef.current = setTimeout(() => {
       setIsThemeTrayOpen(false);
       setIsVoiceTrayOpen(false);
-      setIsChromeVisible(false);
+      Animated.spring(chromeProgress, {
+        toValue: 0,
+        bounciness: 0,
+        speed: 16,
+        useNativeDriver: true
+      }).start(({ finished }) => {
+        if (finished) {
+          setIsChromeVisible(false);
+        }
+      });
     }, CHROME_AUTO_HIDE_DELAY_MS);
   };
 
   const revealChrome = () => {
     setIsChromeVisible(true);
+    Animated.spring(chromeProgress, {
+      toValue: 1,
+      bounciness: 0,
+      speed: 16,
+      useNativeDriver: true
+    }).start();
     scheduleChromeAutoHide();
   };
 
@@ -507,7 +543,16 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
       clearChromeHideTimeout();
       setIsThemeTrayOpen(false);
       setIsVoiceTrayOpen(false);
-      setIsChromeVisible(false);
+      Animated.spring(chromeProgress, {
+        toValue: 0,
+        bounciness: 0,
+        speed: 16,
+        useNativeDriver: true
+      }).start(({ finished }) => {
+        if (finished) {
+          setIsChromeVisible(false);
+        }
+      });
       return;
     }
 
@@ -536,6 +581,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
         ? '停止'
         : '暂停'
     : '听书';
+  const isFullBleedMode = !isChromeVisible;
 
   const handlePrimaryNarrationAction = async () => {
     if (!isCurrentNarration) {
@@ -577,7 +623,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
         <View style={[styles.ambientFrame, { borderColor: readerTheme.shellBorder }]} />
       </View>
 
-      <View
+      <Animated.View
         pointerEvents={isChromeVisible ? 'auto' : 'none'}
         style={[
           styles.headerCard,
@@ -586,13 +632,22 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
             borderColor: readerTheme.panelBorder,
             shadowColor: readerTheme.shadow,
             left: horizontalInset,
-            opacity: isChromeVisible ? 1 : 0,
             right: horizontalInset,
             top: shellVerticalInset,
-            transform: [{ translateY: isChromeVisible ? 0 : -18 }]
+            opacity: chromeOpacity,
+            shadowOpacity: chromeDrawerShadowOpacity,
+            transform: [{ translateY: headerTranslateY }]
           }
         ]}
       >
+        <View style={styles.headerDrawerHandleWrap}>
+          <View
+            style={[
+              styles.headerDrawerHandle,
+              { backgroundColor: readerTheme.border }
+            ]}
+          />
+        </View>
         <Pressable
           onPress={() => void handleClose()}
           style={[styles.backButton, { backgroundColor: readerTheme.surfaceMuted }]}
@@ -650,25 +705,32 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
             </Text>
           </Pressable>
         </View>
-      </View>
+      </Animated.View>
 
       <View
         {...panResponder.panHandlers}
         style={[
           styles.readerShell,
           {
-            backgroundColor: readerTheme.shellBackground,
-            borderColor: readerTheme.shellBorder,
-            borderRadius: shellRadius,
-            marginHorizontal: horizontalInset,
-            marginVertical: shellVerticalInset
+            backgroundColor: isFullBleedMode ? 'transparent' : readerTheme.shellBackground,
+            borderColor: isFullBleedMode ? 'transparent' : readerTheme.shellBorder,
+            borderRadius: isFullBleedMode ? 0 : shellRadius,
+            borderWidth: isFullBleedMode ? 0 : 1,
+            marginHorizontal: isFullBleedMode ? 0 : horizontalInset,
+            marginVertical: isFullBleedMode ? 0 : shellVerticalInset,
+            paddingBottom: isFullBleedMode ? 0 : 8,
+            paddingHorizontal: isFullBleedMode ? 0 : 8,
+            paddingTop: isFullBleedMode ? 0 : 8,
+            shadowOpacity: isFullBleedMode ? 0 : 0.16
           }
         ]}
       >
-        <View
-          pointerEvents="none"
-          style={[styles.readerShellInset, { borderColor: readerTheme.shellInset, borderRadius: shellRadius - 6 }]}
-        />
+        {isFullBleedMode ? null : (
+          <View
+            pointerEvents="none"
+            style={[styles.readerShellInset, { borderColor: readerTheme.shellInset, borderRadius: shellRadius - 6 }]}
+          />
+        )}
         {isThemeTrayOpen ? (
           <View
             style={[
@@ -814,13 +876,14 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
               }
             ]}
           >
-            <View
+            <Animated.View
               style={[
                 styles.edgeRail,
                 styles.edgeRailLeft,
                 {
                   backgroundColor: readerTheme.edgeRail,
-                  borderColor: readerTheme.edgeRailBorder
+                  borderColor: readerTheme.edgeRailBorder,
+                  opacity: edgeRailOpacity
                 },
                 !canGoPrevious && styles.edgeRailDisabled
               ]}
@@ -843,7 +906,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
               >
                 上一页
               </Text>
-            </View>
+            </Animated.View>
           </Pressable>
           <Pressable
             accessibilityLabel="下一页"
@@ -857,13 +920,14 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
               }
             ]}
           >
-            <View
+            <Animated.View
               style={[
                 styles.edgeRail,
                 styles.edgeRailRight,
                 {
                   backgroundColor: readerTheme.edgeRail,
-                  borderColor: readerTheme.edgeRailBorder
+                  borderColor: readerTheme.edgeRailBorder,
+                  opacity: edgeRailOpacity
                 },
                 !canGoNext && styles.edgeRailDisabled
               ]}
@@ -886,7 +950,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
               >
                 下一页
               </Text>
-            </View>
+            </Animated.View>
           </Pressable>
         </View>
 
@@ -894,7 +958,9 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
           style={[
             styles.pageFrame,
             {
-              marginHorizontal: pageFrameHorizontalInset
+              borderRadius: isFullBleedMode ? 0 : 28,
+              marginHorizontal: isFullBleedMode ? 0 : pageFrameHorizontalInset,
+              marginTop: isFullBleedMode ? 0 : 8
             }
           ]}
         >
@@ -905,7 +971,8 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
               {
                 backgroundColor: readerTheme.surfaceRaised,
                 borderColor: readerTheme.border,
-                borderRadius: shellRadius - 4
+                borderRadius: isFullBleedMode ? 0 : shellRadius - 4,
+                borderWidth: isFullBleedMode ? 0 : 1
               },
               {
                 opacity: backgroundOpacity,
@@ -983,7 +1050,8 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
               {
                 backgroundColor: readerTheme.surface,
                 borderColor: readerTheme.border,
-                borderRadius: shellRadius - 4
+                borderRadius: isFullBleedMode ? 0 : shellRadius - 4,
+                borderWidth: isFullBleedMode ? 0 : 1
               },
               {
                 transform: [
@@ -1006,11 +1074,12 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
                 styles.pageTrim,
                 {
                   borderColor: readerTheme.pageTrim,
-                  borderRadius: shellRadius - 10
+                  borderRadius: isFullBleedMode ? 0 : shellRadius - 10,
+                  opacity: isFullBleedMode ? 0 : 0.9
                 }
               ]}
             />
-            <View style={styles.pageTopRow}>
+            <View style={[styles.pageTopRow, isFullBleedMode && styles.pageTopRowCompact]}>
               <View style={[styles.chapterPill, { backgroundColor: book.accentColor }]}>
                 <Text style={styles.chapterPillLabel}>卷页阅读</Text>
               </View>
@@ -1029,27 +1098,9 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
             </Pressable>
           </Animated.View>
         </View>
-
-        {!isChromeVisible ? (
-          <View pointerEvents="none" style={styles.minimalOverlay}>
-            <View
-              style={[
-                styles.minimalOverlayPill,
-                {
-                  backgroundColor: readerTheme.panelBackground,
-                  borderColor: readerTheme.panelBorder
-                }
-              ]}
-            >
-              <Text style={[styles.minimalOverlayText, { color: readerTheme.textSecondary }]}>
-                第 {page + 1} 页 / 轻触唤出菜单
-              </Text>
-            </View>
-          </View>
-        ) : null}
       </View>
 
-      <View
+      <Animated.View
         pointerEvents={isChromeVisible ? 'auto' : 'none'}
         style={[
           styles.footerPanel,
@@ -1058,10 +1109,11 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
             borderColor: readerTheme.panelBorder,
             bottom: shellVerticalInset,
             left: horizontalInset,
-            opacity: isChromeVisible ? 1 : 0,
+            opacity: chromeOpacity,
             right: horizontalInset,
             shadowColor: readerTheme.shadow,
-            transform: [{ translateY: isChromeVisible ? 0 : 18 }]
+            shadowOpacity: chromeDrawerShadowOpacity,
+            transform: [{ translateY: footerTranslateY }]
           }
         ]}
       >
@@ -1103,7 +1155,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
             </Text>
           </Pressable>
         </View>
-      </View>
+      </Animated.View>
     </View>
   );
 }
@@ -1150,20 +1202,33 @@ const styles = StyleSheet.create({
   },
   headerCard: {
     alignItems: 'center',
-    position: 'absolute',
     borderRadius: 28,
     borderWidth: 1,
     flexDirection: 'row',
     gap: 12,
     paddingHorizontal: 14,
+    paddingTop: 18,
     paddingVertical: 10,
+    position: 'absolute',
     shadowOffset: {
       width: 0,
       height: 10
     },
-    shadowOpacity: 0.12,
     shadowRadius: 24,
     zIndex: 8
+  },
+  headerDrawerHandleWrap: {
+    alignItems: 'center',
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 7
+  },
+  headerDrawerHandle: {
+    borderRadius: 999,
+    height: 4,
+    opacity: 0.72,
+    width: 48
   },
   backButton: {
     backgroundColor: colors.surfaceMuted,
@@ -1434,6 +1499,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 6
   },
+  pageTopRowCompact: {
+    paddingTop: 14
+  },
   pageMetaLabel: {
     color: colors.textSecondary,
     fontSize: 10,
@@ -1567,24 +1635,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     textAlign: 'center'
-  },
-  minimalOverlay: {
-    alignItems: 'center',
-    bottom: 18,
-    left: 0,
-    position: 'absolute',
-    right: 0,
-    zIndex: 5
-  },
-  minimalOverlayPill: {
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 8
-  },
-  minimalOverlayText: {
-    fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: 0.2
   }
 });
