@@ -4,6 +4,11 @@ export type Book = {
   author: string;
   description: string;
   accentColor: string;
+  language: string;
+  sourcePdfLabel?: string;
+  sourcePdfUri?: string;
+  translationSourceLocale?: string;
+  translationTargetLocale?: string;
   pages: string[];
 };
 

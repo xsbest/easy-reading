@@ -2,7 +2,18 @@ import * as Speech from 'expo-speech';
 import { StatusBar } from 'expo-status-bar';
 import { Voice } from 'expo-speech';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, PanResponder, Pressable, Platform, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import {
+  Animated,
+  Linking,
+  PanResponder,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View
+} from 'react-native';
 
 import { cloudNarrationTargetsByPresetId, voicePresets } from '../../data/voicePresets';
 import { useLibrary } from '../../state/library-context';
@@ -29,12 +40,21 @@ const DEFAULT_VOICE_MATCH: VoiceMatchResult = {
 };
 
 const DEFAULT_PROVIDER_FOOTNOTE = '当前朗读使用设备语音。中文预设可尝试 ElevenLabs PoC，失败时会自动回退本地朗读。';
+const DEFAULT_RESOURCE_FOOTNOTE = '英文页支持一键跳转 Google Translate；若已导入本机 PDF，也可直接打开原始文件。';
 const THEME_GLYPHS: Record<ReaderThemeId, string> = {
   paper: '◐',
   mist: '◌',
   night: '☾',
   cyber: '✦'
 };
+
+function getTranslationUrl(text: string, sourceLocale: string, targetLocale: string) {
+  const snippet = text.replace(/\s+/g, ' ').trim().slice(0, 1400);
+
+  return `https://translate.google.com/?sl=${encodeURIComponent(sourceLocale)}&tl=${encodeURIComponent(
+    targetLocale
+  )}&text=${encodeURIComponent(snippet)}&op=translate`;
+}
 
 export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
   const {
@@ -66,6 +86,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
   const [voiceLookupReady, setVoiceLookupReady] = useState(false);
   const [readerThemeId, setReaderThemeId] = useState<ReaderThemeId>('paper');
   const [providerFootnote, setProviderFootnote] = useState(DEFAULT_PROVIDER_FOOTNOTE);
+  const [resourceFootnote, setResourceFootnote] = useState(DEFAULT_RESOURCE_FOOTNOTE);
   const [isChromeVisible, setIsChromeVisible] = useState(false);
   const [isThemeTrayOpen, setIsThemeTrayOpen] = useState(false);
   const [isVoiceTrayOpen, setIsVoiceTrayOpen] = useState(false);
@@ -292,6 +313,17 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
   }, [selectedCloudNarrationTarget]);
 
   useEffect(() => {
+    if (book.sourcePdfUri) {
+      setResourceFootnote(
+        `${book.language} 原书已导入，支持打开 ${book.sourcePdfLabel ?? 'PDF'}；翻译按钮会把当前页带到 Google Translate。`
+      );
+      return;
+    }
+
+    setResourceFootnote(DEFAULT_RESOURCE_FOOTNOTE);
+  }, [book.language, book.sourcePdfLabel, book.sourcePdfUri]);
+
+  useEffect(() => {
     if (!isChromeVisible) {
       clearChromeHideTimeout();
       return;
@@ -501,6 +533,35 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
     }
 
     revealChrome();
+  };
+
+  const handleTranslatePage = async () => {
+    try {
+      const translationUrl = getTranslationUrl(
+        book.pages[page],
+        book.translationSourceLocale ?? 'auto',
+        book.translationTargetLocale ?? 'zh-CN'
+      );
+
+      await Linking.openURL(translationUrl);
+      setResourceFootnote('已打开 Google Translate，本页英文内容会自动带入翻译页面。');
+    } catch {
+      setResourceFootnote('当前环境无法直接打开 Google Translate。');
+    }
+  };
+
+  const handleOpenPdf = async () => {
+    if (!book.sourcePdfUri) {
+      setResourceFootnote('当前书籍没有可打开的原始 PDF。');
+      return;
+    }
+
+    try {
+      await Linking.openURL(book.sourcePdfUri);
+      setResourceFootnote(`已尝试打开 ${book.sourcePdfLabel ?? '原始 PDF'}。`);
+    } catch {
+      setResourceFootnote('当前环境无法直接打开本机 PDF，请确认文件路径仍然有效。');
+    }
   };
 
   const voiceFootnote = !voiceLookupReady
@@ -981,6 +1042,43 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
                 第 {page + 1} 页 · 共 {book.pages.length} 页
               </Text>
             </View>
+            <View style={styles.utilityRow}>
+              <Pressable
+                onPress={() => void handleTranslatePage()}
+                style={[styles.utilityButton, { backgroundColor: readerTheme.surfaceMuted, borderColor: readerTheme.border }]}
+              >
+                <Text style={[styles.utilityButtonLabel, { color: readerTheme.primary }]}>翻译本页</Text>
+              </Pressable>
+              <Pressable
+                disabled={!book.sourcePdfUri}
+                onPress={() => void handleOpenPdf()}
+                style={[
+                  styles.utilityButton,
+                  { backgroundColor: readerTheme.surfaceMuted, borderColor: readerTheme.border },
+                  !book.sourcePdfUri && styles.utilityButtonDisabled
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.utilityButtonLabel,
+                    { color: book.sourcePdfUri ? readerTheme.text : readerTheme.textSecondary }
+                  ]}
+                >
+                  打开 PDF
+                </Text>
+              </Pressable>
+            </View>
+            <Text
+              style={[
+                styles.resourceFootnote,
+                {
+                  backgroundColor: readerTheme.surfaceMuted,
+                  color: readerTheme.textSecondary
+                }
+              ]}
+            >
+              {resourceFootnote}
+            </Text>
             <Pressable onPress={handleToggleChrome} style={styles.readerTapZone}>
               <ScrollView
                 contentContainerStyle={styles.readerContent}
@@ -1366,6 +1464,24 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.4
   },
+  utilityRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 10
+  },
+  utilityButton: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8
+  },
+  utilityButtonDisabled: {
+    opacity: 0.5
+  },
+  utilityButtonLabel: {
+    fontSize: 12,
+    fontWeight: '700'
+  },
   chapterPill: {
     alignSelf: 'flex-start',
     borderRadius: 999,
@@ -1393,6 +1509,14 @@ const styles = StyleSheet.create({
   readerContent: {
     flexGrow: 1,
     paddingBottom: 26
+  },
+  resourceFootnote: {
+    borderRadius: 14,
+    fontSize: 11,
+    lineHeight: 17,
+    marginBottom: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8
   },
   pagePreview: {
     color: colors.textSecondary,

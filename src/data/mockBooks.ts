@@ -1,36 +1,57 @@
 import { Book } from '../types/book';
 
-const densityTail =
-  '这一页保留较长段落用于验证阅读页在去掉卷页特效之后，底页淡入、正文滚动、边缘热区和听书控制是否还能稳定共存。';
+function toDesktopPdfUri(path: string) {
+  return encodeURI(`file://${path}`);
+}
 
-function extendPages(pages: string[]) {
-  return pages.map((page) => `${page}\n\n${densityTail}`);
+function createEnglishBook(partial: Omit<Book, 'language' | 'translationSourceLocale' | 'translationTargetLocale'>): Book {
+  return {
+    ...partial,
+    language: 'English',
+    translationSourceLocale: 'en',
+    translationTargetLocale: 'zh-CN'
+  };
 }
 
 export const mockBooks: Book[] = [
-  {
+  createEnglishBook({
     id: 'nodejs-design-patterns',
     title: 'Node.js Design Patterns',
     author: 'Mario Casciaro / Luciano Mammino',
-    description: '聚焦事件循环、异步控制流、流、架构模式与可维护 Node.js 系统设计的主书目。',
+    description: 'Imported from local PDF. Covers async control flow, streams, architecture patterns, and production-ready Node.js design.',
     accentColor: '#2E6F40',
-    pages: extendPages([
-      '前言\n\n这次书架只保留一本 Node.js 主书，目的是把后续功能验证集中到同一条真实阅读链路上。Node.js Design Patterns 的价值不在于罗列语法细节，而在于把 Node.js 运行时、异步边界、模块拆分和架构模式放进同一个工程视角里。你在这里看到的不是原书正文，而是按章节整理的完整阅读版摘要，方便直接拿来验证分页、朗读与阅读器交互。',
-      '第一章 Node.js 平台基础\n\n这一章通常先把事件循环、单线程执行模型、I/O 委托和运行时边界讲清楚。理解 Node.js 的第一步不是背 API，而是理解为什么一个看似简单的请求处理器，背后其实依赖事件循环协调大量异步回调和内核通知。只有先把平台模型吃透，后面的模式选择才不会流于表面。',
-      '第二章 模块系统\n\n模块系统解决的是组织复杂度，而不只是把文件拆开。Node.js 从 CommonJS 到 ES Modules，核心问题始终是依赖边界、导出契约和加载时机。一个模块如果暴露了过多内部细节，后续任何改动都会牵一发动全身；反过来，边界清楚的模块更容易测试、替换和复用。',
-      '第三章 回调与事件\n\n回调和事件驱动是 Node.js 早期最核心的编程接口。它们的优点是贴近底层异步通知机制，表达能力强，缺点是逻辑一旦拉长，错误传播和资源回收就会变得分散。这一章通常会解释错误优先回调、EventEmitter 语义以及如何避免把事件模型滥用成难以追踪的隐式控制流。',
-      '第四章 使用回调处理异步控制流\n\n一旦异步步骤开始串联，真正困难的就不再是某一个回调，而是整条控制流如何保持可读、可撤销、可恢复。并行、串行、竞争、超时和重试都属于控制流问题。设计模式在这里的作用，是把重复出现的异步编排抽象成稳定的结构，而不是在业务代码里不断复制判断和嵌套。',
-      '第五章 使用 Promise 与 async/await\n\nPromise 和 async/await 让 Node.js 代码更接近同步书写习惯，但它们并没有消除异步复杂度，只是把复杂度换了一个位置。真正要关注的是：错误是否仍然被完整捕获、并发是否仍然被明确控制、取消和资源释放是否有出口。语法更顺滑之后，架构纪律反而更重要。',
-      '第六章 使用 Stream 编程\n\nStream 是 Node.js 极具代表性的能力，因为它允许应用在数据尚未完全到达时就开始处理，从而降低内存峰值并提升吞吐。Readable、Writable、Duplex 和 Transform 看起来像几种接口，实质上是在教你如何按背压节奏组织数据流。这一章的重要收获通常是：高吞吐系统往往依赖流式思维，而不是一次性读完整块数据。',
-      '第七章 创建型模式\n\n创建型模式关心的是对象或能力如何被创建和装配。工厂、构建器、依赖注入、延迟初始化这些思路，在 Node.js 里常常不会以非常教科书式的写法出现，但它们都在解决同一个问题：把“如何创建”从“如何使用”里拆出去，让系统更容易切换实现、做测试替身或按环境注入不同策略。',
-      '第八章 结构型模式\n\n结构型模式重点处理组合关系。适配器帮助你接旧接口，代理帮助你补缓存、鉴权或远程边界，装饰器帮助你在不改核心逻辑的前提下叠加额外职责。Node.js 项目里最常见的失控点，是临时逻辑不断侵入核心模块；结构型模式的意义，就是把这些横切关注点重新收拢到明确的封装边界。',
-      '第九章 行为型模式\n\n行为型模式关注对象之间如何协作。命令、策略、观察者、状态机、责任链，在 Node.js 服务中几乎每天都能遇到，只是很多团队没有显式地给它们命名。这一章的关键不在模式名称，而在识别什么时候业务规则已经复杂到需要把决策过程从 if/else 链里解耦出来。',
-      '第十章 用 Stream 组织异步控制流\n\n当流不再只是 I/O 容器，而开始承载一整条处理链路时，架构视角就会进一步放大。你需要考虑上游速度、下游消费能力、错误传播位置以及中间转换节点的可观测性。把 Stream 当成系统骨架，而不是单个工具函数时，Node.js 在数据处理、日志加工和实时管道上的优势会明显放大。',
-      '第十一章 消息与集成模式\n\n消息队列、事件总线和进程间通信，解决的是跨边界协作问题。系统一旦开始拆分成多个服务或多个工作单元，就需要一种方式在解耦和一致性之间取得平衡。Node.js 很适合做这类协调层，因为它擅长处理大量并发连接，但前提是消息模型、失败补偿和幂等约束要先设计清楚。',
-      '第十二章 可扩展性与架构模式\n\n扩展性不是上线后才补的课题。集群、工作线程、水平扩容、反向代理、缓存和限流，都是在回答同一个问题：负载上来之后，系统会先在哪里失真。Node.js 的可扩展性设计往往不是把单个进程榨到极限，而是尽早承认进程边界、共享状态和任务分配的现实限制。',
-      '第十三章 通用 JavaScript 与运行时边界\n\n现代 Node.js 应用很少完全孤立于其他运行时。你可能要和浏览器共享代码、和边缘运行时共享约束、和构建工具共享模块格式。所谓通用 JavaScript，并不是追求一份代码处处运行，而是在共享和特化之间找到合理切分点，让真正应该复用的部分可复用，不该硬复用的部分保持独立。',
-      '第十四章 高级配方与落地实践\n\n到了收尾部分，重点通常会回到生产实践：如何组合前面提到的模式，如何做错误建模、配置管理、日志与可观测性，如何让项目在不断迭代后仍保持可维护。一本好的设计模式书最后都会把模式拉回工程现场，因为模式的价值从来不在于背诵术语，而在于帮助团队用更稳定的结构承接真实变化。',
-      '结语\n\n如果把整本书串起来看，它提供的是一张 Node.js 工程地图：从运行时到模块、从控制流到 Stream、从局部模式到系统架构。现在这份 mock 数据已经不再是三页试读，而是覆盖整本书主要章节的完整版摘要，适合用来继续打磨阅读器主链路。'
-    ])
-  }
+    sourcePdfLabel: 'Desktop PDF',
+    sourcePdfUri: toDesktopPdfUri('/Users/daniel/Desktop/Node.js-Design-Patterns.pdf'),
+    pages: [
+      'Introduction\n\nNode.js Design Patterns frames Node.js as a runtime with a specific set of strengths and tradeoffs rather than a bag of APIs. The book starts by grounding the reader in the event loop, non-blocking I/O, and the reasons why concurrency in Node.js is mostly about coordination instead of threads. That framing matters because every later design choice, from module boundaries to service decomposition, depends on understanding what the runtime is actually good at.',
+      'Node.js Platform Principles\n\nA recurring theme in the book is that performance does not come from clever syntax. It comes from respecting the runtime model. When a team learns how the event loop schedules work, how callbacks re-enter application logic, and how external systems influence latency, they stop treating asynchronous code as incidental complexity. Instead, they begin to model it explicitly. That shift leads to clearer service boundaries, better error handling, and less accidental blocking code in hot paths.',
+      'Modules and Encapsulation\n\nThe chapters on modules explain that a module is not just a file. It is an agreement about visibility, change tolerance, and ownership. CommonJS and ES modules are presented as mechanisms, but the real lesson is architectural: if a module leaks too much internal detail, the entire codebase becomes harder to evolve. The book repeatedly shows how to hide construction details, expose small stable contracts, and design a system where replacement and testing are expected rather than painful exceptions.',
+      'Callbacks, Promises, and Control Flow\n\nThe asynchronous control flow chapters move from callback conventions to Promise chains and async functions, but they do not pretend that syntax eliminates complexity. The deeper concern is how to model retries, timeouts, cancellation, fan-out, fan-in, and partial failure. Good asynchronous code is not merely readable. It is observable and interruptible. The book makes that distinction clear by showing how quickly business logic becomes fragile when sequencing, resource cleanup, and concurrency limits are not treated as first-class design problems.',
+      'Streams and Backpressure\n\nStreams are presented as one of Node.js most distinctive capabilities because they transform data handling from a load-everything-first model into a flow-based model. A reader who understands streams understands backpressure, and a reader who understands backpressure can design systems that remain stable under load. The book uses streams to explain that data pipelines are architectural structures. They are not just utilities. Once data is modeled as a flow, memory behavior, throughput, and failure handling all become easier to reason about.',
+      'Creational and Structural Patterns\n\nThe patterns chapters are adapted to the way JavaScript and Node.js code is actually written. Factories, dependency injection, adapters, proxies, and decorators are not introduced as ceremonial abstractions. They are shown as practical ways to remove construction logic from business logic, isolate third-party integrations, and add capabilities like caching or authorization without turning a core module into a tangled conditional mess. The benefit is not elegance for its own sake. The benefit is controlled change.',
+      'Behavioral Patterns and Messaging\n\nBehavioral patterns appear when business rules become too large for ad hoc conditionals. Strategy, observer, command, and state-oriented designs help separate decisions from execution. That same mindset scales into message-driven systems, queues, and event buses. The book is strong when it explains that once a system crosses process boundaries, architecture is no longer just about code reuse. It becomes about consistency, idempotency, failure recovery, and the discipline required to keep distributed workflows understandable.',
+      'Scalability and Production Practice\n\nThe final material ties patterns back to production reality. Clustering, worker threads, distributed load, configuration, logging, and resilience are treated as connected concerns. The book argues that maintainable Node.js systems come from aligning the runtime, the abstraction level, and the operational model. That is why the book remains useful: it does not ask the reader to memorize named patterns. It asks the reader to build systems whose structure matches the forces acting on them.'
+    ]
+  }),
+  createEnglishBook({
+    id: 'programming-typescript',
+    title: 'Programming TypeScript',
+    author: 'Boris Cherny',
+    description: 'Imported from local PDF. Focuses on scalable TypeScript design, type-level modeling, tooling, and maintainable JavaScript migration.',
+    accentColor: '#2F5FA7',
+    sourcePdfLabel: 'Desktop PDF',
+    sourcePdfUri: toDesktopPdfUri(
+      '/Users/daniel/Desktop/Boris Cherny - Programming TypeScript_ Making Your JavaScript Applications Scale - O′Reilly (2019).pdf'
+    ),
+    pages: [
+      'Introduction\n\nProgramming TypeScript treats the language as a design tool for building large JavaScript systems, not as a layer of optional annotations. Boris Cherny introduces TypeScript as a way to encode expectations, make change safer, and improve communication between humans and code. The core premise is that type systems are most valuable when they help teams express intent early, before assumptions turn into production bugs.',
+      'The TypeScript Mindset\n\nA major contribution of the book is how it teaches readers to think in terms of values and types simultaneously. JavaScript remains dynamic at runtime, but TypeScript adds a compile-time model that can represent invariants, contracts, and legal state transitions. That model is not there to replace testing or thoughtful API design. It is there to catch mismatches earlier and force clarity about what a function accepts, what it returns, and what states are impossible.',
+      'Type Inference and Annotation Discipline\n\nThe book repeatedly recommends restraint. Annotate where it sharpens boundaries, but let inference carry local details where possible. That balance keeps code expressive without turning every file into a wall of syntax. Strong TypeScript code is not the code with the most annotations. It is the code whose public surface is precise, whose generics have a purpose, and whose implementation remains readable enough for ordinary application engineers to maintain.',
+      'Interfaces, Aliases, and Domain Modeling\n\nWhen Cherny discusses interfaces, unions, intersections, and literal types, the emphasis is on modeling the domain rather than modeling implementation trivia. Types become a way to describe business states with more rigor. Instead of scattering loose objects and booleans throughout a codebase, developers can create richer models that document what combinations are valid. This is where TypeScript starts to change architecture, because it influences how teams shape data flow and reason about edge cases.',
+      'Generics and Reuse\n\nThe generics chapters show how abstraction can remain safe without becoming abstract for its own sake. Generic functions and data structures are useful when they preserve relationships between inputs and outputs, not when they simply remove duplication. The book does a good job distinguishing between reusable code and overly clever code. Well-designed generics make APIs predictable and composable. Poorly designed generics create confusion, widen types accidentally, and hide intent.',
+      'Errors, Async Code, and Interop\n\nAnother practical strength of the book is its attention to real-world boundaries. TypeScript must coexist with JavaScript libraries, browser APIs, Node.js APIs, and imperfect external typings. Cherny walks through how to type asynchronous flows, manage nullability, narrow unknown values, and integrate with ambient declarations. The message is that type safety is not a switch you flip. It is a gradient you improve over time by tightening the most error-prone boundaries first.',
+      'Tooling and Migration Strategy\n\nFor teams adopting TypeScript incrementally, the migration guidance is especially useful. The book recognizes that legacy JavaScript systems cannot be rewritten in one pass. Instead, it recommends using compiler options, declaration files, and progressive strictness to move toward safer code without freezing delivery. That pragmatic stance makes the book valuable for working engineers because it treats adoption as an organizational process, not just a language exercise.',
+      'Scaling JavaScript Applications\n\nThe closing idea is that TypeScript scales by making assumptions explicit. As applications grow, more people touch the same modules, more data crosses boundaries, and more refactors happen under time pressure. Types create a shared language that helps engineers move faster without relying entirely on memory or tribal knowledge. Programming TypeScript is persuasive because it keeps returning to that point: type systems are ultimately about making large systems easier to understand and safer to change.'
+    ]
+  })
 ];

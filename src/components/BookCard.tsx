@@ -21,6 +21,16 @@ export function BookCard({ book, progressLabel, onPress }: BookCardProps) {
         <Text numberOfLines={2} style={styles.description}>
           {book.description}
         </Text>
+        <View style={styles.badgeRow}>
+          <View style={styles.badge}>
+            <Text style={styles.badgeLabel}>{book.language}</Text>
+          </View>
+          {book.sourcePdfUri ? (
+            <View style={styles.badge}>
+              <Text style={styles.badgeLabel}>PDF Imported</Text>
+            </View>
+          ) : null}
+        </View>
         <Text style={styles.progress}>{progressLabel}</Text>
       </View>
     </Pressable>
@@ -72,6 +82,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20
   },
+  badgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  badge: {
+    backgroundColor: '#F3ECDE',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5
+  },
+  badgeLabel: {
+    color: colors.primary,
+    fontSize: 11,
+    fontWeight: '700'
+  },
   progress: {
     color: colors.primary,
     fontSize: 13,
@@ -79,4 +105,3 @@ const styles = StyleSheet.create({
     marginTop: 2
   }
 });
-
