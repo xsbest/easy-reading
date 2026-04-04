@@ -90,6 +90,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
   const [isChromeVisible, setIsChromeVisible] = useState(false);
   const [isThemeTrayOpen, setIsThemeTrayOpen] = useState(false);
   const [isVoiceTrayOpen, setIsVoiceTrayOpen] = useState(false);
+  const [isTranslationEnabled, setIsTranslationEnabled] = useState(false);
   const dragX = useRef(new Animated.Value(0)).current;
   const chromeProgress = useRef(new Animated.Value(0)).current;
   const isAnimatingRef = useRef(false);
@@ -124,7 +125,20 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
       : dragDirection > 0
         ? Math.max(page - 1, 0)
         : page;
-  const targetPageText = book.pages[targetPage] ?? book.pages[page];
+  const translatedPage = book.translatedPages?.[page] ?? null;
+  const translatedTargetPage = book.translatedPages?.[targetPage] ?? null;
+  const displayPageText = isTranslationEnabled && translatedPage ? translatedPage : book.pages[page];
+  const targetPageText =
+    isTranslationEnabled && translatedTargetPage
+      ? translatedTargetPage
+      : (book.pages[targetPage] ?? book.pages[page]);
+  const translationModeLabel = translatedPage
+    ? isTranslationEnabled
+      ? '当前显示中文译文'
+      : '当前显示英文原文'
+    : '当前页暂无内置译文';
+  const translationToggleLabel =
+    translatedPage && isTranslationEnabled ? '查看原文' : translatedPage ? '自动翻译' : '暂无译文';
 
   const backgroundOpacity = dragX.interpolate({
     inputRange: [-pageWidth * MAX_DRAG_RATIO, 0, pageWidth * MAX_DRAG_RATIO],
@@ -374,7 +388,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
 
   const handleStartNarration = async () => {
     const token = `${book.id}:${page}:${Date.now()}`;
-    const pageText = book.pages[page];
+    const pageText = displayPageText;
 
     narrationTokenRef.current = token;
     await Speech.stop();
@@ -548,6 +562,20 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
     } catch {
       setResourceFootnote('当前环境无法直接打开 Google Translate。');
     }
+  };
+
+  const handleToggleInlineTranslation = () => {
+    if (!translatedPage) {
+      setResourceFootnote('当前页还没有内置中文译文，已保留英文原文。');
+      return;
+    }
+
+    setIsTranslationEnabled((value) => !value);
+    setResourceFootnote(
+      isTranslationEnabled
+        ? '已切回英文原文；如需机翻，可继续打开 Google Translate。'
+        : '已切到当前页中文译文；原文仍可通过按钮随时切回。'
+    );
   };
 
   const handleOpenPdf = async () => {
@@ -1038,16 +1066,39 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
               <View style={[styles.chapterPill, { backgroundColor: book.accentColor }]}>
                 <Text style={styles.chapterPillLabel}>沉浸阅读</Text>
               </View>
-              <Text style={[styles.pageMetaLabel, { color: readerTheme.textSecondary }]}>
-                第 {page + 1} 页 · 共 {book.pages.length} 页
-              </Text>
+              <View style={styles.pageMetaCluster}>
+                <Text style={[styles.pageMetaLabel, { color: readerTheme.textSecondary }]}>
+                  第 {page + 1} 页 · 共 {book.pages.length} 页
+                </Text>
+                <Text style={[styles.translationModeLabel, { color: readerTheme.primary }]}>
+                  {translationModeLabel}
+                </Text>
+              </View>
             </View>
             <View style={styles.utilityRow}>
+              <Pressable
+                disabled={!translatedPage}
+                onPress={handleToggleInlineTranslation}
+                style={[
+                  styles.utilityButton,
+                  { backgroundColor: readerTheme.surfaceMuted, borderColor: translatedPage ? readerTheme.primary : readerTheme.border },
+                  !translatedPage && styles.utilityButtonDisabled
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.utilityButtonLabel,
+                    { color: translatedPage ? readerTheme.primary : readerTheme.textSecondary }
+                  ]}
+                >
+                  {translationToggleLabel}
+                </Text>
+              </Pressable>
               <Pressable
                 onPress={() => void handleTranslatePage()}
                 style={[styles.utilityButton, { backgroundColor: readerTheme.surfaceMuted, borderColor: readerTheme.border }]}
               >
-                <Text style={[styles.utilityButtonLabel, { color: readerTheme.primary }]}>翻译本页</Text>
+                <Text style={[styles.utilityButtonLabel, { color: readerTheme.primary }]}>Google 翻译</Text>
               </Pressable>
               <Pressable
                 disabled={!book.sourcePdfUri}
@@ -1085,7 +1136,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
                 showsVerticalScrollIndicator={false}
                 style={styles.readerScroll}
               >
-                <Text style={[styles.pageBody, { color: readerTheme.text }]}>{book.pages[page]}</Text>
+                <Text style={[styles.pageBody, { color: readerTheme.text }]}>{displayPageText}</Text>
               </ScrollView>
             </Pressable>
           </Animated.View>
@@ -1458,14 +1509,23 @@ const styles = StyleSheet.create({
   pageTopRowCompact: {
     paddingTop: 14
   },
+  pageMetaCluster: {
+    alignItems: 'flex-end',
+    gap: 4
+  },
   pageMetaLabel: {
     color: colors.textSecondary,
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.4
   },
+  translationModeLabel: {
+    fontSize: 11,
+    fontWeight: '700'
+  },
   utilityRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
     marginBottom: 10
   },

@@ -16,21 +16,26 @@ export function BookCard({ book, progressLabel, onPress }: BookCardProps) {
         <Text style={styles.coverTitle}>{book.title}</Text>
       </View>
       <View style={styles.content}>
+        <View style={styles.badgeRow}>
+          <View style={styles.badge}>
+            <Text style={styles.badgeLabel}>{book.language}</Text>
+          </View>
+          {book.translatedPages?.length ? (
+            <View style={styles.badge}>
+              <Text style={styles.badgeLabel}>中译</Text>
+            </View>
+          ) : null}
+          {book.sourcePdfLabel ? (
+            <View style={styles.badge}>
+              <Text style={styles.badgeLabel}>{book.sourcePdfLabel}</Text>
+            </View>
+          ) : null}
+        </View>
         <Text style={styles.title}>{book.title}</Text>
         <Text style={styles.author}>{book.author}</Text>
         <Text numberOfLines={2} style={styles.description}>
           {book.description}
         </Text>
-        <View style={styles.badgeRow}>
-          <View style={styles.badge}>
-            <Text style={styles.badgeLabel}>{book.language}</Text>
-          </View>
-          {book.sourcePdfUri ? (
-            <View style={styles.badge}>
-              <Text style={styles.badgeLabel}>PDF Imported</Text>
-            </View>
-          ) : null}
-        </View>
         <Text style={styles.progress}>{progressLabel}</Text>
       </View>
     </Pressable>
@@ -68,6 +73,22 @@ const styles = StyleSheet.create({
     gap: 8,
     justifyContent: 'center'
   },
+  badgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6
+  },
+  badge: {
+    backgroundColor: '#F3ECDE',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5
+  },
+  badgeLabel: {
+    color: colors.primary,
+    fontSize: 11,
+    fontWeight: '700'
+  },
   title: {
     color: colors.text,
     fontSize: 18,
@@ -81,22 +102,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 14,
     lineHeight: 20
-  },
-  badgeRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8
-  },
-  badge: {
-    backgroundColor: '#F3ECDE',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5
-  },
-  badgeLabel: {
-    color: colors.primary,
-    fontSize: 11,
-    fontWeight: '700'
   },
   progress: {
     color: colors.primary,

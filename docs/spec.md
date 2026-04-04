@@ -88,10 +88,17 @@ src/
 
 ### 4.5 内容密度与 mock 数据
 
-1. `mockBooks.ts` 先收敛为一本 `Node.js Design Patterns`
-2. 该书内容扩充为覆盖主要章节的长页摘要，作为后续阅读器功能联调用书
+1. `mockBooks.ts` 当前包含 `Node.js Design Patterns` 与 `Programming TypeScript` 两本英文技术书
+2. 两本书都保留英文摘要页，并挂接桌面 PDF 文件路径作为原始资源入口
 3. `ReaderScreen` 继续沿用现有排版参数验证“每页更多内容”的效果
-4. 在不修改真实分页引擎前提下，用单一本地 mock 书验证翻页、朗读与阅读进度
+4. 在不修改真实分页引擎前提下，用本地摘要页验证翻页、朗读、打开 PDF 与翻译跳转
+
+### 4.6 英文页翻译入口
+
+1. 阅读页提供“翻译本页”按钮
+2. 按钮点击后通过 `Linking.openURL` 跳转到 Google Translate Web 页面
+3. 当前页正文会以 query 参数方式带入，默认从英文翻到简体中文
+4. 不新增 SDK、插件或客户端依赖，保持 Expo Managed Workflow
 
 ## 5. 状态管理策略
 

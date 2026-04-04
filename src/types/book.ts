@@ -10,6 +10,7 @@ export type Book = {
   translationSourceLocale?: string;
   translationTargetLocale?: string;
   pages: string[];
+  translatedPages?: string[];
 };
 
 export type VoicePreset = {
