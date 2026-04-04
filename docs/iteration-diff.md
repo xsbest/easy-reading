@@ -1,5 +1,29 @@
 # Iteration Diff
 
+## 2026-04-04 (Reader Page Motion Simplification + Node Book Consolidation)
+
+### 本次需求增量
+
+- 去掉阅读页卷页翻动特效，只保留底页内容由淡到清晰的翻页反馈
+- 清空其他书架 mock 数据，仅保留一本 `Node.js Design Patterns`
+- 将 Node.js 书从三页试读扩充为覆盖主要章节的完整版摘要页
+
+### 本次实现边界
+
+- 仅调整 `src/features/reader/ReaderScreen.tsx`、`src/data/mockBooks.ts` 和文档
+- 不重建项目骨架，不扩到书架搜索或真实书源接入，不新增依赖
+- 不改现有朗读主链路和阅读进度状态模型
+
+### 受影响模块
+
+- `src/features/reader/ReaderScreen.tsx`
+- `src/data/mockBooks.ts`
+- `docs/prd.md`
+- `docs/spec.md`
+- `docs/open-issues.md`
+- `docs/iteration-diff.md`
+- `docs/changelog.md`
+
 ## 2026-04-03 (Doubao + Qiuzhi Voice Routing Research)
 
 ### 本次需求增量

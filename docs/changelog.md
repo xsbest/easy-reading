@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-04-04T04:55:00Z
+- 阅读页去掉卷页旋转、卷角、书脊阴影和页面抬升特效，只保留前景页平移与底页内容由淡到清晰的过渡
+- 书架 mock 数据收敛为单一本地 `Node.js Design Patterns`，便于后续集中做阅读器功能联调
+- `src/data/mockBooks.ts` 中的 Node.js 书从三页试读扩充为覆盖主要章节的完整版摘要页
+
 ## 2026-04-03T14:25:00Z
 - 更新 `docs/voice-provider-research.md`，补充“男声中英文都用豆包、女声都用秋芝”的候选方案与取舍结论
 - 明确该诉求不能通过 `voicePresets` 恢复，若要真实落地，必须批准替换 `expo-speech` 主朗读链路并补音频播放能力

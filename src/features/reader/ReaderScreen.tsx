@@ -2,18 +2,7 @@ import * as Speech from 'expo-speech';
 import { StatusBar } from 'expo-status-bar';
 import { Voice } from 'expo-speech';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Animated,
-  Easing,
-  PanResponder,
-  Pressable,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View
-} from 'react-native';
+import { Animated, PanResponder, Pressable, Platform, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { cloudNarrationTargetsByPresetId, voicePresets } from '../../data/voicePresets';
 import { useLibrary } from '../../state/library-context';
@@ -116,53 +105,9 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
         : page;
   const targetPageText = book.pages[targetPage] ?? book.pages[page];
 
-  const pageShadowOpacity = dragX.interpolate({
-    inputRange: [-pageWidth * MAX_DRAG_RATIO, 0, pageWidth * MAX_DRAG_RATIO],
-    outputRange: [0.24, 0, 0.24]
-  });
-  const backgroundScale = dragX.interpolate({
-    inputRange: [-pageWidth * MAX_DRAG_RATIO, 0, pageWidth * MAX_DRAG_RATIO],
-    outputRange: [1, 0.982, 1]
-  });
   const backgroundOpacity = dragX.interpolate({
     inputRange: [-pageWidth * MAX_DRAG_RATIO, 0, pageWidth * MAX_DRAG_RATIO],
-    outputRange: [1, 0.68, 1]
-  });
-  const foregroundRotate = dragX.interpolate({
-    inputRange: [-pageWidth * MAX_DRAG_RATIO, 0, pageWidth * MAX_DRAG_RATIO],
-    outputRange: ['-15deg', '0deg', '15deg']
-  });
-  const foregroundScale = dragX.interpolate({
-    inputRange: [-pageWidth * MAX_DRAG_RATIO, 0, pageWidth * MAX_DRAG_RATIO],
-    outputRange: [0.985, 1, 0.985]
-  });
-  const leftCurlOpacity = dragX.interpolate({
-    inputRange: [0, pageWidth * 0.1, pageWidth * 0.7],
-    outputRange: [0, 0.45, 0.92],
-    extrapolate: 'clamp'
-  });
-  const rightCurlOpacity = dragX.interpolate({
-    inputRange: [-pageWidth * 0.7, -pageWidth * 0.1, 0],
-    outputRange: [0.92, 0.45, 0],
-    extrapolate: 'clamp'
-  });
-  const leftCurlScale = dragX.interpolate({
-    inputRange: [0, pageWidth * 0.7],
-    outputRange: [0.2, 1],
-    extrapolate: 'clamp'
-  });
-  const rightCurlScale = dragX.interpolate({
-    inputRange: [-pageWidth * 0.7, 0],
-    outputRange: [1, 0.2],
-    extrapolate: 'clamp'
-  });
-  const spineShadowOpacity = dragX.interpolate({
-    inputRange: [-pageWidth * 0.7, 0, pageWidth * 0.7],
-    outputRange: [0.22, 0.08, 0.22]
-  });
-  const pageLift = dragX.interpolate({
-    inputRange: [-pageWidth * MAX_DRAG_RATIO, 0, pageWidth * MAX_DRAG_RATIO],
-    outputRange: [4, 0, 4]
+    outputRange: [1, 0.26, 1]
   });
   const headerTranslateY = chromeProgress.interpolate({
     inputRange: [0, 1],
@@ -284,8 +229,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
     void stopActiveNarration().finally(() => {
       Animated.timing(dragX, {
         toValue: direction < 0 ? -pageWidth : pageWidth,
-        duration: 220,
-        easing: Easing.out(Easing.cubic),
+        duration: 180,
         useNativeDriver: true
       }).start(() => {
         if (direction < 0) {
@@ -975,8 +919,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
                 borderWidth: isFullBleedMode ? 0 : 1
               },
               {
-                opacity: backgroundOpacity,
-                transform: [{ scale: backgroundScale }]
+                opacity: backgroundOpacity
               }
             ]}
           >
@@ -1006,45 +949,6 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
           </Animated.View>
 
           <Animated.View
-            pointerEvents="none"
-            style={[styles.spineShadow, { backgroundColor: readerTheme.shadow, opacity: spineShadowOpacity }]}
-          />
-
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              styles.pageCurl,
-              styles.pageCurlLeft,
-              {
-                opacity: leftCurlOpacity,
-                transform: [{ scaleX: leftCurlScale }, { rotateY: '-28deg' }]
-              }
-            ]}
-          >
-            <View style={styles.pageCurlInner}>
-              <View style={styles.pageCurlShade} />
-              <View style={styles.pageCurlHighlight} />
-            </View>
-          </Animated.View>
-
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              styles.pageCurl,
-              styles.pageCurlRight,
-              {
-                opacity: rightCurlOpacity,
-                transform: [{ scaleX: rightCurlScale }, { rotateY: '28deg' }]
-              }
-            ]}
-          >
-            <View style={styles.pageCurlInner}>
-              <View style={styles.pageCurlShade} />
-              <View style={styles.pageCurlHighlight} />
-            </View>
-          </Animated.View>
-
-          <Animated.View
             style={[
               styles.foregroundPage,
               {
@@ -1054,20 +958,10 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
                 borderWidth: isFullBleedMode ? 0 : 1
               },
               {
-                transform: [
-                  { perspective: 1600 },
-                  { translateX: dragX },
-                  { translateY: pageLift },
-                  { rotateY: foregroundRotate },
-                  { scale: foregroundScale }
-                ]
+                transform: [{ translateX: dragX }]
               }
             ]}
           >
-            <Animated.View
-              pointerEvents="none"
-              style={[styles.pageShadow, { backgroundColor: readerTheme.shadow, opacity: pageShadowOpacity }]}
-            />
             <View
               pointerEvents="none"
               style={[
@@ -1081,7 +975,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
             />
             <View style={[styles.pageTopRow, isFullBleedMode && styles.pageTopRowCompact]}>
               <View style={[styles.chapterPill, { backgroundColor: book.accentColor }]}>
-                <Text style={styles.chapterPillLabel}>卷页阅读</Text>
+                <Text style={styles.chapterPillLabel}>沉浸阅读</Text>
               </View>
               <Text style={[styles.pageMetaLabel, { color: readerTheme.textSecondary }]}>
                 第 {page + 1} 页 · 共 {book.pages.length} 页
@@ -1438,39 +1332,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16
   },
-  spineShadow: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 28
-  },
-  pageCurl: {
-    bottom: 18,
-    position: 'absolute',
-    top: 18,
-    width: '56%',
-    zIndex: 2
-  },
-  pageCurlLeft: {
-    left: 0
-  },
-  pageCurlRight: {
-    right: 0
-  },
-  pageCurlInner: {
-    backgroundColor: '#F6EAD7',
-    borderRadius: 24,
-    flex: 1,
-    overflow: 'hidden'
-  },
-  pageCurlShade: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#A88355',
-    opacity: 0.26
-  },
-  pageCurlHighlight: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#FFF6E9',
-    opacity: 0.72
-  },
   foregroundPage: {
     borderRadius: 28,
     borderWidth: 1,
@@ -1479,9 +1340,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     zIndex: 3
-  },
-  pageShadow: {
-    ...StyleSheet.absoluteFillObject
   },
   pageTrim: {
     borderRadius: 22,
