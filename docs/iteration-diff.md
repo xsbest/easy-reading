@@ -1,5 +1,26 @@
 # Iteration Diff
 
+## 2026-04-05 (Drawer Overlay + Full Content Loading Research)
+
+### 本次需求增量
+
+- 调研“阅读页点击展开后不要再压缩布局，全部改成抽屉式展开”的落地方式
+- 调研“当前书本内容不应停在 18 页，需支持更完整内容加载，必要时评估 CDN”的可行路线
+- 输出候选方案、依赖影响与取舍结论，不直接修改 `src/` 实现
+
+### 本次实现边界
+
+- 仅更新 `docs/` 研究结论
+- 不直接改 `ReaderScreen.tsx`、`mockBooks.ts` 或内容底层链路
+- 不在未审批前新增依赖，不直接切到 PDF 解析或 CDN 远程内容方案
+
+### 受影响模块
+
+- `docs/reader-drawer-and-content-research.md`
+- `docs/open-issues.md`
+- `docs/iteration-diff.md`
+- `docs/changelog.md`
+
 ## 2026-04-04 (Reader Page Motion Simplification + Node Book Consolidation)
 
 ### 本次需求增量
