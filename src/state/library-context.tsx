@@ -8,7 +8,7 @@ import {
 
 import { mockBooks } from '../data/mockBooks';
 import { voicePresets } from '../data/voicePresets';
-import { Book, LibraryState } from '../types/book';
+import { Book, BookRemoteContentPayload, LibraryState } from '../types/book';
 
 type LibraryAction =
   | { type: 'OPEN_BOOK'; bookId: string }
@@ -20,7 +20,8 @@ type LibraryAction =
   | { type: 'PAUSE_NARRATION' }
   | { type: 'RESUME_NARRATION' }
   | { type: 'STOP_NARRATION' }
-  | { type: 'SET_VOICE_PRESET'; presetId: string };
+  | { type: 'SET_VOICE_PRESET'; presetId: string }
+  | { type: 'HYDRATE_BOOK_CONTENT'; bookId: string; content: BookRemoteContentPayload };
 
 type LibraryContextValue = {
   state: LibraryState;
@@ -36,6 +37,7 @@ type LibraryContextValue = {
   resumeNarration: () => void;
   stopNarration: () => void;
   setVoicePreset: (presetId: string) => void;
+  hydrateBookContent: (bookId: string, content: BookRemoteContentPayload) => void;
 };
 
 const initialState: LibraryState = {
@@ -143,6 +145,33 @@ function libraryReducer(state: LibraryState, action: LibraryAction): LibraryStat
           ? action.presetId
           : state.selectedVoicePresetId
       };
+    case 'HYDRATE_BOOK_CONTENT': {
+      const nextBooks = state.books.map((book) =>
+        book.id === action.bookId
+          ? {
+              ...book,
+              ...action.content,
+              pages: action.content.pages,
+              translatedPages: action.content.translatedPages,
+              tableOfContents: action.content.tableOfContents ?? book.tableOfContents
+            }
+          : book
+      );
+      const updatedBook = nextBooks.find((book) => book.id === action.bookId);
+
+      return {
+        ...state,
+        books: nextBooks,
+        currentPageByBookId: {
+          ...state.currentPageByBookId,
+          [action.bookId]: clampPage(updatedBook, state.currentPageByBookId[action.bookId] ?? 0)
+        },
+        narrationPageByBookId: {
+          ...state.narrationPageByBookId,
+          [action.bookId]: clampPage(updatedBook, state.narrationPageByBookId[action.bookId] ?? 0)
+        }
+      };
+    }
     default:
       return state;
   }
@@ -172,7 +201,9 @@ export function LibraryProvider({ children }: PropsWithChildren) {
       pauseNarration: () => dispatch({ type: 'PAUSE_NARRATION' }),
       resumeNarration: () => dispatch({ type: 'RESUME_NARRATION' }),
       stopNarration: () => dispatch({ type: 'STOP_NARRATION' }),
-      setVoicePreset: (presetId: string) => dispatch({ type: 'SET_VOICE_PRESET', presetId })
+      setVoicePreset: (presetId: string) => dispatch({ type: 'SET_VOICE_PRESET', presetId }),
+      hydrateBookContent: (bookId: string, content: BookRemoteContentPayload) =>
+        dispatch({ type: 'HYDRATE_BOOK_CONTENT', bookId, content })
     };
   }, [state]);
 

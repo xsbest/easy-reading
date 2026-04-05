@@ -35,6 +35,11 @@ export function BookCard({ book, progressLabel, onPress }: BookCardProps) {
               <Text style={styles.badgeLabel}>PDF {book.totalPdfPages} 页</Text>
             </View>
           ) : null}
+          {book.remoteContent?.expectedPageCount ? (
+            <View style={styles.badge}>
+              <Text style={styles.badgeLabel}>远端全文 {book.remoteContent.expectedPageCount} 页</Text>
+            </View>
+          ) : null}
         </View>
         <Text style={styles.title}>{book.title}</Text>
         <Text style={styles.author}>{book.author}</Text>

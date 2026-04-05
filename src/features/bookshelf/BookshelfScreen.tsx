@@ -20,7 +20,7 @@ export function BookshelfScreen({ onOpenBook }: BookshelfScreenProps) {
       <SectionTitle
         eyebrow="Flash Read"
         title="你的书架"
-        description="已挂接两本本地英文 PDF 全量原文件，并在阅读页补充目录导读、AI 导读、一键翻译与原 PDF 打开入口。"
+        description="两本英文技术书已切到远端 PDF / 全文分页资源方案；阅读页会先展示导读页，并在远端全文可用时自动切换。"
       />
 
       {lastOpenedBook ? (
@@ -30,13 +30,16 @@ export function BookshelfScreen({ onOpenBook }: BookshelfScreenProps) {
           <Text style={styles.resumeMeta}>
             第 {(currentPageByBookId[lastOpenedBook.id] ?? 0) + 1} 页 / 共 {lastOpenedBook.pages.length} 页
             {lastOpenedBook.totalPdfPages ? ` · PDF ${lastOpenedBook.totalPdfPages} 页` : ''}
+            {lastOpenedBook.remoteContent?.expectedPageCount
+              ? ` · 远端全文 ${lastOpenedBook.remoteContent.expectedPageCount} 页`
+              : ''}
           </Text>
         </Pressable>
       ) : null}
 
       <View style={styles.section}>
         <Text style={styles.sectionName}>书架管理</Text>
-        <Text style={styles.sectionHint}>点击书籍进入阅读页，可直接打开本机 PDF、查看目录导读 / AI 导读，或跳转 Google Translate 翻译当前页。</Text>
+        <Text style={styles.sectionHint}>点击书籍进入阅读页，可打开远端 PDF、查看目录导读 / AI 导读，或在远端全文同步后继续翻读完整内容。</Text>
         {books.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyTitle}>书架还是空的</Text>
@@ -45,9 +48,13 @@ export function BookshelfScreen({ onOpenBook }: BookshelfScreenProps) {
         ) : (
           books.map((book) => {
             const page = currentPageByBookId[book.id] ?? 0;
-            const progressLabel = book.totalPdfPages
-              ? `已读 ${page + 1}/${book.pages.length} 导读页 · PDF ${book.totalPdfPages} 页已挂接`
-              : `已读 ${page + 1}/${book.pages.length} 页`;
+            const progressLabel = book.remoteContent?.expectedPageCount
+              ? book.pages.length >= book.remoteContent.expectedPageCount
+                ? `已读 ${page + 1}/${book.pages.length} 全文页 · 远端资源已同步`
+                : `已读 ${page + 1}/${book.pages.length} 导读页 · 远端全文 ${book.remoteContent.expectedPageCount} 页待同步`
+              : book.totalPdfPages
+                ? `已读 ${page + 1}/${book.pages.length} 导读页 · PDF ${book.totalPdfPages} 页已挂接`
+                : `已读 ${page + 1}/${book.pages.length} 页`;
 
             return (
               <BookCard

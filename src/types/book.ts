@@ -12,6 +12,24 @@ export type BookAiGuide = {
   reflectionQuestions: string[];
 };
 
+export type BookRemoteContent = {
+  objectKey: string;
+  manifestUrl: string;
+  version: string;
+  expectedPageCount?: number;
+  label?: string;
+};
+
+export type BookRemoteContentPayload = {
+  pages: string[];
+  translatedPages?: string[];
+  tableOfContents?: BookTocItem[];
+  totalPdfPages?: number;
+  sourcePdfLabel?: string;
+  sourcePdfUri?: string;
+  description?: string;
+};
+
 export type Book = {
   id: string;
   title: string;
@@ -28,6 +46,7 @@ export type Book = {
   translatedPages?: string[];
   tableOfContents?: BookTocItem[];
   aiGuide?: BookAiGuide;
+  remoteContent?: BookRemoteContent;
 };
 
 export type VoicePreset = {

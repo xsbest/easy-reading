@@ -1,14 +1,14 @@
 # flash-read1
 
-`flash-read1` 是一个基于 Expo + React Native + TypeScript 的读书 App 阅读体验骨架，当前版本已覆盖书架管理、卷页翻书阅读、阅读进度状态维护、本地轻量听书、英文页一键翻译入口，以及目录导读 / AI 导读面板。
+`flash-read1` 是一个基于 Expo + React Native + TypeScript 的读书 App 阅读体验骨架，当前版本已覆盖书架管理、卷页翻书阅读、阅读进度状态维护、本地轻量听书、英文页一键翻译入口，以及目录导读 / AI 导读面板，并支持从远端服务器拉取全文分页内容。
 
 ## 当前范围
 
 - 书架页：展示书籍、阅读进度、最近阅读入口
 - 阅读页：书籍标题、章节内容、卷页翻书动效、边缘点击翻页、页码信息、听书控制、Google Translate 跳转
-- 阅读页增强：目录导读跳页、AI 导读建议、原 PDF 总页数提示
+- 阅读页增强：目录导读跳页、AI 导读建议、原 PDF 总页数提示、远端全文同步
 - 本地状态：用 Context + `useReducer` 管理书库与阅读会话
-- Mock 数据：内置两本已挂接完整桌面 PDF 的英文技术书，扩展为 18 个导读页并附带语音预设
+- Mock 数据：内置两本英文技术书的导读页，并预留远端 PDF / 全文 JSON 清单接入位
 - 本地语音：使用 `expo-speech` 朗读当前页内容，并根据预设映射系统可用音色
 
 ## 技术选型
@@ -31,6 +31,32 @@ npm run start
 ```bash
 npm run ios
 npm run android
+```
+
+如需启用远端 PDF / 全文加载，请配置：
+
+```bash
+EXPO_PUBLIC_READER_CONTENT_BASE_URL=https://your-static-host.example.com
+EXPO_PUBLIC_READER_ASSET_BASE_URL=https://your-static-host.example.com
+```
+
+远端全文 JSON 至少需要返回：
+
+```ts
+type RemoteBookContentPayload = {
+  pages: string[];
+  translatedPages?: string[];
+  tableOfContents?: {
+    title: string;
+    summary: string;
+    pageIndex: number;
+    pdfPageLabel?: string;
+  }[];
+  totalPdfPages?: number;
+  sourcePdfLabel?: string;
+  sourcePdfUri?: string;
+  description?: string;
+};
 ```
 
 ## 文档

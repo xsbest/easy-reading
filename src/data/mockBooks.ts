@@ -14,6 +14,10 @@ type GuidedPage = {
   pdfPageLabel?: string;
 };
 
+const remoteContentBaseUrl = process.env.EXPO_PUBLIC_READER_CONTENT_BASE_URL?.trim().replace(/\/+$/, '') ?? '';
+const remoteAssetBaseUrl =
+  process.env.EXPO_PUBLIC_READER_ASSET_BASE_URL?.trim().replace(/\/+$/, '') ?? remoteContentBaseUrl;
+
 function extendPages(pages: string[], tail: string) {
   return pages.map((page) => `${page}\n\n${tail}`);
 }
@@ -25,6 +29,14 @@ function buildTableOfContents(pages: GuidedPage[]): BookTocItem[] {
     pageIndex,
     pdfPageLabel: page.pdfPageLabel
   }));
+}
+
+function buildRemoteContentUrl(objectKey: string) {
+  return remoteContentBaseUrl ? `${remoteContentBaseUrl}/${objectKey}` : '';
+}
+
+function buildRemoteAssetUrl(objectKey: string) {
+  return remoteAssetBaseUrl ? `${remoteAssetBaseUrl}/${objectKey}` : undefined;
 }
 
 function createEnglishBook(
@@ -352,15 +364,22 @@ export const mockBooks: Book[] = [
     title: 'Node.js Design Patterns',
     author: 'Mario Casciaro / Luciano Mammino',
     description:
-      'Desktop PDF 已完整挂接，阅读页扩展为 18 个章节导读页，并补充目录导读与 AI 导读，方便从运行时到架构逐层消化全书。',
+      '远端服务器将托管原始 PDF 与全文分页 JSON；当前阅读页先展示 18 个章节导读页，并在远端全文可达后自动切换到完整内容。',
     accentColor: '#2E6F40',
     language: 'English',
     totalPdfPages: 454,
-    sourcePdfLabel: 'Desktop PDF',
-    sourcePdfUri: 'file:///Users/daniel/Desktop/Node.js-Design-Patterns.pdf',
+    sourcePdfLabel: 'Remote PDF',
+    sourcePdfUri: buildRemoteAssetUrl('pdfs/nodejs-design-patterns.pdf'),
     translationSourceLocale: 'en',
     translationTargetLocale: 'zh-CN',
     aiGuide: nodeJsAiGuide,
+    remoteContent: {
+      objectKey: 'books/nodejs-design-patterns.full-text.v1.json',
+      manifestUrl: buildRemoteContentUrl('books/nodejs-design-patterns.full-text.v1.json'),
+      version: '2026-04-05',
+      expectedPageCount: 454,
+      label: '远端全文'
+    },
     guidePages: nodeJsGuidePages
   }),
   createEnglishBook({
@@ -368,16 +387,22 @@ export const mockBooks: Book[] = [
     title: 'Programming TypeScript',
     author: 'Boris Cherny',
     description:
-      'Desktop PDF 已完整挂接，阅读页扩展为 18 个章节导读页，并增加目录导读与 AI 导读，便于按“编译器 -> 类型 -> API -> 迁移”顺序阅读。',
+      '远端服务器将托管原始 PDF 与全文分页 JSON；当前阅读页先展示 18 个章节导读页，并在远端全文可达后自动切换到完整内容。',
     accentColor: '#2452A8',
     language: 'English',
     totalPdfPages: 324,
-    sourcePdfLabel: 'Desktop PDF',
-    sourcePdfUri:
-      'file:///Users/daniel/Desktop/Boris%20Cherny%20-%20Programming%20TypeScript_%20Making%20Your%20JavaScript%20Applications%20Scale%20-%20O%E2%80%B2Reilly%20%282019%29.pdf',
+    sourcePdfLabel: 'Remote PDF',
+    sourcePdfUri: buildRemoteAssetUrl('pdfs/programming-typescript.pdf'),
     translationSourceLocale: 'en',
     translationTargetLocale: 'zh-CN',
     aiGuide: programmingTypeScriptAiGuide,
+    remoteContent: {
+      objectKey: 'books/programming-typescript.full-text.v1.json',
+      manifestUrl: buildRemoteContentUrl('books/programming-typescript.full-text.v1.json'),
+      version: '2026-04-05',
+      expectedPageCount: 324,
+      label: '远端全文'
+    },
     guidePages: programmingTypeScriptGuidePages
   })
 ];

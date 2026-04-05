@@ -20,6 +20,7 @@ import { useLibrary } from '../../state/library-context';
 import { colors, readerThemeIds, ReaderThemeId, readerThemes } from '../../theme/tokens';
 import { Book } from '../../types/book';
 import { synthesizeNarrationWithElevenLabs } from './elevenlabs';
+import { loadRemoteBookContent } from './remote-content';
 import { resolveVoiceAssignments, VoiceMatchResult } from './voice-utils';
 
 type ReaderScreenProps = {
@@ -73,7 +74,8 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
     pauseNarration,
     resumeNarration,
     stopNarration,
-    setVoicePreset
+    setVoicePreset,
+    hydrateBookContent
   } = useLibrary();
   const { height, width } = useWindowDimensions();
   const horizontalInset = Math.min(Math.max(width * 0.04, 12), 22);
@@ -94,6 +96,8 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
   const [isTranslationEnabled, setIsTranslationEnabled] = useState(false);
   const [isTocVisible, setIsTocVisible] = useState(false);
   const [isAiGuideVisible, setIsAiGuideVisible] = useState(false);
+  const [remoteContentStatus, setRemoteContentStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [remoteContentMessage, setRemoteContentMessage] = useState('');
   const dragX = useRef(new Animated.Value(0)).current;
   const chromeProgress = useRef(new Animated.Value(0)).current;
   const isAnimatingRef = useRef(false);
@@ -114,6 +118,9 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
   const readerTheme = readerThemes[readerThemeId];
   const nextReaderThemeId =
     readerThemeIds[(readerThemeIds.indexOf(readerThemeId) + 1) % readerThemeIds.length];
+  const remoteContent = book.remoteContent ?? null;
+  const isRemoteContentLoaded =
+    remoteContent?.expectedPageCount ? book.pages.length >= remoteContent.expectedPageCount : false;
 
   const isCurrentNarration =
     isNarrationActive &&
@@ -145,6 +152,14 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
   const tocItems = book.tableOfContents ?? [];
   const aiGuide = book.aiGuide ?? null;
   const pdfStatusLabel = book.totalPdfPages ? `原 PDF ${book.totalPdfPages} 页已挂接` : '已挂接原 PDF';
+  const contentStatusLabel =
+    remoteContentStatus === 'loading'
+      ? '正在同步远端全文'
+      : remoteContentStatus === 'ready'
+        ? `当前阅读 ${book.pages.length} 页全文`
+        : remoteContentStatus === 'error'
+          ? '当前显示导读回退内容'
+          : `当前显示 ${book.pages.length} 页导读内容`;
   const guideToggleLabel = isTocVisible ? '收起目录导读' : '目录导读';
   const aiGuideToggleLabel = isAiGuideVisible ? '收起 AI 导读' : 'AI 导读';
 
@@ -344,6 +359,65 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
 
     setResourceFootnote(DEFAULT_RESOURCE_FOOTNOTE);
   }, [book.language, book.sourcePdfLabel, book.sourcePdfUri, pdfStatusLabel]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    if (!remoteContent) {
+      setRemoteContentStatus('idle');
+      setRemoteContentMessage('当前书籍未配置远端全文源。');
+      return () => {
+        isActive = false;
+      };
+    }
+
+    if (!remoteContent.manifestUrl) {
+      setRemoteContentStatus('error');
+      setRemoteContentMessage('未配置 EXPO_PUBLIC_READER_CONTENT_BASE_URL，当前继续使用内置导读页。');
+      return () => {
+        isActive = false;
+      };
+    }
+
+    if (isRemoteContentLoaded) {
+      setRemoteContentStatus('ready');
+      setRemoteContentMessage(
+        `${remoteContent.label ?? '远端全文'} 已同步，当前共 ${book.pages.length} 页。`
+      );
+      return () => {
+        isActive = false;
+      };
+    }
+
+    setRemoteContentStatus('loading');
+    setRemoteContentMessage(`正在从 ${remoteContent.objectKey} 拉取全文分页数据...`);
+
+    void loadRemoteBookContent(remoteContent)
+      .then((content) => {
+        if (!isActive) {
+          return;
+        }
+
+        hydrateBookContent(book.id, content);
+        setRemoteContentStatus('ready');
+        setRemoteContentMessage(
+          `${remoteContent.label ?? '远端全文'} 已同步，当前共 ${content.pages.length} 页。`
+        );
+      })
+      .catch((error) => {
+        if (!isActive) {
+          return;
+        }
+
+        const detail = error instanceof Error ? error.message : '未知错误';
+        setRemoteContentStatus('error');
+        setRemoteContentMessage(`${detail}，当前继续显示内置导读页。`);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [book.id, book.pages.length, hydrateBookContent, isRemoteContentLoaded, remoteContent]);
 
   useEffect(() => {
     if (!isChromeVisible) {
@@ -560,7 +634,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
   const handleTranslatePage = async () => {
     try {
       const translationUrl = getTranslationUrl(
-        book.pages[page],
+        displayPageText,
         book.translationSourceLocale ?? 'auto',
         book.translationTargetLocale ?? 'zh-CN'
       );
@@ -596,7 +670,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
       await Linking.openURL(book.sourcePdfUri);
       setResourceFootnote(`已尝试打开 ${book.sourcePdfLabel ?? '原始 PDF'}。`);
     } catch {
-      setResourceFootnote('当前环境无法直接打开本机 PDF，请确认文件路径仍然有效。');
+      setResourceFootnote('当前环境无法直接打开远端 PDF，请确认资源 URL 与部署配置仍然有效。');
     }
   };
 
@@ -723,6 +797,9 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
           </Text>
           <Text style={[styles.author, { color: readerTheme.textSecondary }]}>
             {book.author} · 第 {page + 1} / {book.pages.length} 页
+          </Text>
+          <Text style={[styles.headerSubmeta, { color: readerTheme.textSecondary }]}>
+            {contentStatusLabel}
           </Text>
         </View>
         <View style={styles.headerActions}>
@@ -1102,6 +1179,9 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
                 </Text>
                 <Text style={[styles.translationModeLabel, { color: readerTheme.primary }]}>
                   {translationModeLabel}
+                </Text>
+                <Text style={[styles.pageMetaLabel, { color: readerTheme.textSecondary }]}>
+                  {remoteContentMessage}
                 </Text>
               </View>
             </View>
@@ -1527,6 +1607,12 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 12,
     marginTop: 2
+  },
+  headerSubmeta: {
+    color: colors.textSecondary,
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 3
   },
   readerShell: {
     borderRadius: 34,
