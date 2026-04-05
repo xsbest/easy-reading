@@ -20,7 +20,7 @@ export function BookshelfScreen({ onOpenBook }: BookshelfScreenProps) {
       <SectionTitle
         eyebrow="Flash Read"
         title="你的书架"
-        description="已导入本地英文 PDF 书籍，并在阅读页提供一键翻译与原 PDF 打开入口。"
+        description="已挂接两本本地英文 PDF 全量原文件，并在阅读页补充目录导读、AI 导读、一键翻译与原 PDF 打开入口。"
       />
 
       {lastOpenedBook ? (
@@ -29,13 +29,14 @@ export function BookshelfScreen({ onOpenBook }: BookshelfScreenProps) {
           <Text style={styles.resumeTitle}>{lastOpenedBook.title}</Text>
           <Text style={styles.resumeMeta}>
             第 {(currentPageByBookId[lastOpenedBook.id] ?? 0) + 1} 页 / 共 {lastOpenedBook.pages.length} 页
+            {lastOpenedBook.totalPdfPages ? ` · PDF ${lastOpenedBook.totalPdfPages} 页` : ''}
           </Text>
         </Pressable>
       ) : null}
 
       <View style={styles.section}>
         <Text style={styles.sectionName}>书架管理</Text>
-        <Text style={styles.sectionHint}>点击书籍进入阅读页，可直接打开本机 PDF 或跳转 Google Translate 翻译当前页。</Text>
+        <Text style={styles.sectionHint}>点击书籍进入阅读页，可直接打开本机 PDF、查看目录导读 / AI 导读，或跳转 Google Translate 翻译当前页。</Text>
         {books.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyTitle}>书架还是空的</Text>
@@ -44,7 +45,9 @@ export function BookshelfScreen({ onOpenBook }: BookshelfScreenProps) {
         ) : (
           books.map((book) => {
             const page = currentPageByBookId[book.id] ?? 0;
-            const progressLabel = `已读 ${page + 1}/${book.pages.length} 页`;
+            const progressLabel = book.totalPdfPages
+              ? `已读 ${page + 1}/${book.pages.length} 导读页 · PDF ${book.totalPdfPages} 页已挂接`
+              : `已读 ${page + 1}/${book.pages.length} 页`;
 
             return (
               <BookCard

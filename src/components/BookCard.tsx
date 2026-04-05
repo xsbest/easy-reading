@@ -30,6 +30,11 @@ export function BookCard({ book, progressLabel, onPress }: BookCardProps) {
               <Text style={styles.badgeLabel}>{book.sourcePdfLabel}</Text>
             </View>
           ) : null}
+          {book.totalPdfPages ? (
+            <View style={styles.badge}>
+              <Text style={styles.badgeLabel}>PDF {book.totalPdfPages} 页</Text>
+            </View>
+          ) : null}
         </View>
         <Text style={styles.title}>{book.title}</Text>
         <Text style={styles.author}>{book.author}</Text>

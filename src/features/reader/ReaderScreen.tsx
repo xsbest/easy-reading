@@ -68,6 +68,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
     },
     nextPage,
     previousPage,
+    goToPage,
     startNarration,
     pauseNarration,
     resumeNarration,
@@ -91,6 +92,8 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
   const [isThemeTrayOpen, setIsThemeTrayOpen] = useState(false);
   const [isVoiceTrayOpen, setIsVoiceTrayOpen] = useState(false);
   const [isTranslationEnabled, setIsTranslationEnabled] = useState(false);
+  const [isTocVisible, setIsTocVisible] = useState(false);
+  const [isAiGuideVisible, setIsAiGuideVisible] = useState(false);
   const dragX = useRef(new Animated.Value(0)).current;
   const chromeProgress = useRef(new Animated.Value(0)).current;
   const isAnimatingRef = useRef(false);
@@ -139,6 +142,11 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
     : '当前页暂无内置译文';
   const translationToggleLabel =
     translatedPage && isTranslationEnabled ? '查看原文' : translatedPage ? '自动翻译' : '暂无译文';
+  const tocItems = book.tableOfContents ?? [];
+  const aiGuide = book.aiGuide ?? null;
+  const pdfStatusLabel = book.totalPdfPages ? `原 PDF ${book.totalPdfPages} 页已挂接` : '已挂接原 PDF';
+  const guideToggleLabel = isTocVisible ? '收起目录导读' : '目录导读';
+  const aiGuideToggleLabel = isAiGuideVisible ? '收起 AI 导读' : 'AI 导读';
 
   const backgroundOpacity = dragX.interpolate({
     inputRange: [-pageWidth * MAX_DRAG_RATIO, 0, pageWidth * MAX_DRAG_RATIO],
@@ -329,13 +337,13 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
   useEffect(() => {
     if (book.sourcePdfUri) {
       setResourceFootnote(
-        `${book.language} 原书已导入，支持打开 ${book.sourcePdfLabel ?? 'PDF'}；翻译按钮会把当前页带到 Google Translate。`
+        `${book.language} 原书已导入，${pdfStatusLabel}，支持打开 ${book.sourcePdfLabel ?? 'PDF'}；翻译按钮会把当前页带到 Google Translate。`
       );
       return;
     }
 
     setResourceFootnote(DEFAULT_RESOURCE_FOOTNOTE);
-  }, [book.language, book.sourcePdfLabel, book.sourcePdfUri]);
+  }, [book.language, book.sourcePdfLabel, book.sourcePdfUri, pdfStatusLabel]);
 
   useEffect(() => {
     if (!isChromeVisible) {
@@ -590,6 +598,28 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
     } catch {
       setResourceFootnote('当前环境无法直接打开本机 PDF，请确认文件路径仍然有效。');
     }
+  };
+
+  const handleToggleToc = () => {
+    revealChrome();
+    setIsTocVisible((value) => !value);
+    setIsAiGuideVisible(false);
+    setResourceFootnote(`${pdfStatusLabel}，目录导读可直接跳转到对应章节导读页。`);
+  };
+
+  const handleToggleAiGuide = () => {
+    revealChrome();
+    setIsAiGuideVisible((value) => !value);
+    setIsTocVisible(false);
+    setResourceFootnote('AI 导读会根据本书结构给出阅读顺序、理解重点和思考问题。');
+  };
+
+  const handleJumpToGuidePage = async (nextPageIndex: number, title: string) => {
+    await stopActiveNarration();
+    goToPage(book.id, nextPageIndex);
+    setIsTocVisible(false);
+    setResourceFootnote(`已跳转到 ${title}。`);
+    revealChrome();
   };
 
   const voiceFootnote = !voiceLookupReady
@@ -1119,6 +1149,32 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
                 </Text>
               </Pressable>
             </View>
+            <View style={styles.utilityRow}>
+              <Pressable
+                onPress={handleToggleToc}
+                style={[styles.utilityButton, { backgroundColor: readerTheme.surfaceMuted, borderColor: readerTheme.border }]}
+              >
+                <Text style={[styles.utilityButtonLabel, { color: readerTheme.primary }]}>{guideToggleLabel}</Text>
+              </Pressable>
+              <Pressable
+                disabled={!aiGuide}
+                onPress={handleToggleAiGuide}
+                style={[
+                  styles.utilityButton,
+                  { backgroundColor: readerTheme.surfaceMuted, borderColor: readerTheme.border },
+                  !aiGuide && styles.utilityButtonDisabled
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.utilityButtonLabel,
+                    { color: aiGuide ? readerTheme.primary : readerTheme.textSecondary }
+                  ]}
+                >
+                  {aiGuideToggleLabel}
+                </Text>
+              </Pressable>
+            </View>
             <Text
               style={[
                 styles.resourceFootnote,
@@ -1136,6 +1192,94 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
                 showsVerticalScrollIndicator={false}
                 style={styles.readerScroll}
               >
+                {isTocVisible && tocItems.length ? (
+                  <View
+                    style={[
+                      styles.guidePanel,
+                      {
+                        backgroundColor: readerTheme.surfaceMuted,
+                        borderColor: readerTheme.border
+                      }
+                    ]}
+                  >
+                    <Text style={[styles.guidePanelTitle, { color: readerTheme.text }]}>目录导读</Text>
+                    <Text style={[styles.guidePanelSummary, { color: readerTheme.textSecondary }]}>
+                      共 {tocItems.length} 个导读页，覆盖 {pdfStatusLabel} 的主要章节脉络。
+                    </Text>
+                    <View style={styles.guideList}>
+                      {tocItems.map((item) => (
+                        <Pressable
+                          key={`${item.title}-${item.pageIndex}`}
+                          onPress={() => void handleJumpToGuidePage(item.pageIndex, item.title)}
+                          style={[
+                            styles.guideRow,
+                            {
+                              backgroundColor:
+                                item.pageIndex === page ? readerTheme.panelBackground : readerTheme.surface,
+                              borderColor:
+                                item.pageIndex === page ? readerTheme.primary : readerTheme.border
+                            }
+                          ]}
+                        >
+                          <View style={styles.guideRowMeta}>
+                            <Text style={[styles.guideRowIndex, { color: readerTheme.primary }]}>
+                              {item.pageIndex + 1}
+                            </Text>
+                            <View style={styles.guideRowText}>
+                              <Text style={[styles.guideRowTitle, { color: readerTheme.text }]}>{item.title}</Text>
+                              <Text style={[styles.guideRowSummary, { color: readerTheme.textSecondary }]}>
+                                {item.summary}
+                              </Text>
+                            </View>
+                          </View>
+                          <Text style={[styles.guideRowPdfLabel, { color: readerTheme.textSecondary }]}>
+                            {item.pdfPageLabel ?? `第 ${item.pageIndex + 1} 页`}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </View>
+                ) : null}
+                {isAiGuideVisible && aiGuide ? (
+                  <View
+                    style={[
+                      styles.guidePanel,
+                      {
+                        backgroundColor: readerTheme.surfaceMuted,
+                        borderColor: readerTheme.border
+                      }
+                    ]}
+                  >
+                    <Text style={[styles.guidePanelTitle, { color: readerTheme.text }]}>AI 导读</Text>
+                    <Text style={[styles.guidePanelSummary, { color: readerTheme.textSecondary }]}>
+                      {aiGuide.summary}
+                    </Text>
+                    <View style={styles.aiGuideSection}>
+                      <Text style={[styles.aiGuideSectionTitle, { color: readerTheme.primary }]}>建议读法</Text>
+                      {aiGuide.recommendedPath.map((item) => (
+                        <Text key={item} style={[styles.aiGuideBullet, { color: readerTheme.text }]}>
+                          • {item}
+                        </Text>
+                      ))}
+                    </View>
+                    <View style={styles.aiGuideSection}>
+                      <Text style={[styles.aiGuideSectionTitle, { color: readerTheme.primary }]}>理解抓手</Text>
+                      {aiGuide.understandingTips.map((item) => (
+                        <Text key={item} style={[styles.aiGuideBullet, { color: readerTheme.text }]}>
+                          • {item}
+                        </Text>
+                      ))}
+                    </View>
+                    <View style={styles.aiGuideSection}>
+                      <Text style={[styles.aiGuideSectionTitle, { color: readerTheme.primary }]}>思考问题</Text>
+                      {aiGuide.reflectionQuestions.map((item) => (
+                        <Text key={item} style={[styles.aiGuideBullet, { color: readerTheme.text }]}>
+                          • {item}
+                        </Text>
+                      ))}
+                    </View>
+                  </View>
+                ) : null}
                 <Text style={[styles.pageBody, { color: readerTheme.text }]}>{displayPageText}</Text>
               </ScrollView>
             </Pressable>
@@ -1541,6 +1685,67 @@ const styles = StyleSheet.create({
   utilityButtonLabel: {
     fontSize: 12,
     fontWeight: '700'
+  },
+  guidePanel: {
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 10,
+    marginBottom: 12,
+    padding: 14
+  },
+  guidePanelTitle: {
+    fontSize: 15,
+    fontWeight: '700'
+  },
+  guidePanelSummary: {
+    fontSize: 12,
+    lineHeight: 18
+  },
+  guideList: {
+    gap: 8
+  },
+  guideRow: {
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 8,
+    padding: 12
+  },
+  guideRowMeta: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: 10
+  },
+  guideRowIndex: {
+    fontSize: 16,
+    fontWeight: '800',
+    minWidth: 18
+  },
+  guideRowText: {
+    flex: 1,
+    gap: 4
+  },
+  guideRowTitle: {
+    fontSize: 13,
+    fontWeight: '700'
+  },
+  guideRowSummary: {
+    fontSize: 12,
+    lineHeight: 18
+  },
+  guideRowPdfLabel: {
+    fontSize: 11,
+    fontWeight: '600'
+  },
+  aiGuideSection: {
+    gap: 6
+  },
+  aiGuideSectionTitle: {
+    fontSize: 12,
+    fontWeight: '800'
+  },
+  aiGuideBullet: {
+    fontSize: 13,
+    lineHeight: 21
   },
   chapterPill: {
     alignSelf: 'flex-start',

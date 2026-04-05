@@ -1,3 +1,17 @@
+export type BookTocItem = {
+  title: string;
+  summary: string;
+  pageIndex: number;
+  pdfPageLabel?: string;
+};
+
+export type BookAiGuide = {
+  summary: string;
+  recommendedPath: string[];
+  understandingTips: string[];
+  reflectionQuestions: string[];
+};
+
 export type Book = {
   id: string;
   title: string;
@@ -5,12 +19,15 @@ export type Book = {
   description: string;
   accentColor: string;
   language: string;
+  totalPdfPages?: number;
   sourcePdfLabel?: string;
   sourcePdfUri?: string;
   translationSourceLocale?: string;
   translationTargetLocale?: string;
   pages: string[];
   translatedPages?: string[];
+  tableOfContents?: BookTocItem[];
+  aiGuide?: BookAiGuide;
 };
 
 export type VoicePreset = {

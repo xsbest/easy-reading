@@ -1,8 +1,8 @@
 # Open Issues
 
 - `expo-speech` 的可用 voice 由设备平台决定。本轮只能保证“尽量区分预设 + 失败时显式回退提示”，不能保证所有预设在所有设备上都映射到不同音色。
-- 当前书架已扩为两本本地英文技术书，但仍然是摘要页驱动，不是完整 PDF 内嵌解析结果。
-- `Node.js Design Patterns` 与 `Programming TypeScript` 当前提供的是覆盖主要章节的英文摘要版 mock，用于功能联调，不是原书全文渲染结果。
+- 当前书架已挂接两本本地英文技术书的完整桌面 PDF，并把阅读页导读扩展到 18 页；但阅读器内仍然是导读分页，不是全文 PDF 内嵌排版结果。
+- `Node.js Design Patterns` 与 `Programming TypeScript` 当前提供的是覆盖全书主线的章节导读 + AI 导读，用于功能联调，不是逐页还原原书全文渲染结果。
 - “翻译本页”当前通过外跳 Google Translate Web 完成，未接入官方翻译 SDK 或内嵌插件。
 - 原 PDF 入口依赖桌面文件路径；若源文件被移动、删除，阅读页里的“打开 PDF”会失效。
 - ElevenLabs PoC 当前只覆盖中文预设，且直接依赖 `EXPO_PUBLIC_ELEVENLABS_API_KEY`；正式环境仍需要服务端代理和密钥保护。
