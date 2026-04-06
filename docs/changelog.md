@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-04-06T05:55:00Z
+- 阅读页将外跳 Google Translate 改为页内片段翻译，用户可直接点选本页句子后翻成中文
+- `src/features/reader/ReaderScreen.tsx` 新增正文片段选择、高亮、翻译请求和结果展示，不引入新依赖
+- 同步 `README.md`、`agents.md`、`docs/spec.md` 与 `docs/open-issues.md`，将翻译链路描述更新为页内片段翻译
+
 ## 2026-04-05T09:53:34Z
 - 新增 `docs/reader-drawer-and-content-research.md`，整理“抽屉式覆盖展开不压缩布局”和“18 页导读之外的更完整内容加载 / CDN”候选方案
 - 明确当前真正会压缩正文的是 `目录导读` 与 `AI 导读` 的内联展开；若继续推进，推荐改为覆盖式抽屉，不需要新增依赖或替换底层能力

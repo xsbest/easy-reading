@@ -41,7 +41,7 @@ const DEFAULT_VOICE_MATCH: VoiceMatchResult = {
 };
 
 const DEFAULT_PROVIDER_FOOTNOTE = '当前朗读使用设备语音。中文预设可尝试 ElevenLabs PoC，失败时会自动回退本地朗读。';
-const DEFAULT_RESOURCE_FOOTNOTE = '英文页支持一键跳转 Google Translate；若已导入本机 PDF，也可直接打开原始文件。';
+const DEFAULT_RESOURCE_FOOTNOTE = '英文页支持页内选中片段后翻译成中文；若已导入本机 PDF，也可直接打开原始文件。';
 const THEME_GLYPHS: Record<ReaderThemeId, string> = {
   paper: '◐',
   mist: '◌',
@@ -49,12 +49,43 @@ const THEME_GLYPHS: Record<ReaderThemeId, string> = {
   cyber: '✦'
 };
 
-function getTranslationUrl(text: string, sourceLocale: string, targetLocale: string) {
-  const snippet = text.replace(/\s+/g, ' ').trim().slice(0, 1400);
+function buildSelectableSegments(text: string) {
+  const segments = text.match(/[^.!?。！？\n]+[.!?。！？]?[\s\n]*/g) ?? [text];
 
-  return `https://translate.google.com/?sl=${encodeURIComponent(sourceLocale)}&tl=${encodeURIComponent(
-    targetLocale
-  )}&text=${encodeURIComponent(snippet)}&op=translate`;
+  return segments.map((segment) => segment).filter((segment) => segment.trim().length > 0);
+}
+
+async function translateSelectedText(text: string, sourceLocale: string, targetLocale: string) {
+  const snippet = text.replace(/\s+/g, ' ').trim().slice(0, 1200);
+
+  if (!snippet) {
+    throw new Error('请先选中需要翻译的正文片段。');
+  }
+
+  const response = await fetch(
+    `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(
+      sourceLocale
+    )}&tl=${encodeURIComponent(targetLocale)}&dt=t&q=${encodeURIComponent(snippet)}`
+  );
+
+  if (!response.ok) {
+    throw new Error(`翻译请求失败（${response.status}）`);
+  }
+
+  const payload = (await response.json()) as unknown;
+  const translatedChunks = Array.isArray(payload) && Array.isArray(payload[0]) ? payload[0] : null;
+  const translatedText = translatedChunks
+    ? translatedChunks
+        .map((entry) => (Array.isArray(entry) && typeof entry[0] === 'string' ? entry[0] : ''))
+        .join('')
+        .trim()
+    : '';
+
+  if (!translatedText) {
+    throw new Error('翻译服务没有返回可用内容。');
+  }
+
+  return translatedText;
 }
 
 export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
@@ -95,6 +126,9 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
   const [isTranslationEnabled, setIsTranslationEnabled] = useState(false);
   const [isTocVisible, setIsTocVisible] = useState(false);
   const [isAiGuideVisible, setIsAiGuideVisible] = useState(false);
+  const [selectedSegmentIndexes, setSelectedSegmentIndexes] = useState<number[]>([]);
+  const [selectionTranslation, setSelectionTranslation] = useState<string | null>(null);
+  const [isSelectionTranslationLoading, setIsSelectionTranslationLoading] = useState(false);
   const [remoteContentStatus, setRemoteContentStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [remoteContentMessage, setRemoteContentMessage] = useState('');
   const dragX = useRef(new Animated.Value(0)).current;
@@ -136,11 +170,18 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
         : page;
   const translatedPage = book.translatedPages?.[page] ?? null;
   const translatedTargetPage = book.translatedPages?.[targetPage] ?? null;
-  const displayPageText = isTranslationEnabled && translatedPage ? translatedPage : book.pages[page];
+  const sourcePageText = book.pages[page];
+  const displayPageText = isTranslationEnabled && translatedPage ? translatedPage : sourcePageText;
   const targetPageText =
     isTranslationEnabled && translatedTargetPage
       ? translatedTargetPage
       : (book.pages[targetPage] ?? book.pages[page]);
+  const selectableSegments = useMemo(() => buildSelectableSegments(sourcePageText), [sourcePageText]);
+  const selectedExcerpt = selectedSegmentIndexes
+    .map((index) => selectableSegments[index] ?? '')
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
   const translationModeLabel = translatedPage
     ? isTranslationEnabled
       ? '当前显示中文译文'
@@ -162,6 +203,9 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
   const guideToggleLabel = isTocVisible ? '收起目录导读' : '目录导读';
   const aiGuideToggleLabel = isAiGuideVisible ? '收起 AI 导读' : 'AI 导读';
   const isContentDrawerVisible = isTocVisible || isAiGuideVisible;
+  const selectedSnippetLabel = selectedSegmentIndexes.length
+    ? `已选 ${selectedSegmentIndexes.length} 段`
+    : '未选中片段';
 
   const backgroundOpacity = dragX.interpolate({
     inputRange: [-pageWidth * MAX_DRAG_RATIO, 0, pageWidth * MAX_DRAG_RATIO],
@@ -353,7 +397,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
   useEffect(() => {
     if (book.sourcePdfUri) {
       setResourceFootnote(
-        `${book.language} 原书已导入，${pdfStatusLabel}，支持打开 ${book.sourcePdfLabel ?? 'PDF'}；翻译按钮会把当前页带到 Google Translate。`
+        `${book.language} 原书已导入，${pdfStatusLabel}，支持打开 ${book.sourcePdfLabel ?? 'PDF'}；翻译功能会在页内把已选片段翻成中文。`
       );
       return;
     }
@@ -437,6 +481,12 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
       clearChromeHideTimeout();
     };
   }, [isChromeVisible, isThemeTrayOpen, isVoiceTrayOpen, page]);
+
+  useEffect(() => {
+    setSelectedSegmentIndexes([]);
+    setSelectionTranslation(null);
+    setIsSelectionTranslationLoading(false);
+  }, [book.id, page, isTranslationEnabled]);
 
   const panResponder = useMemo(
     () =>
@@ -639,18 +689,51 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
     revealChrome();
   };
 
-  const handleTranslatePage = async () => {
+  const handleToggleTextSelection = (segmentIndex: number) => {
+    if (isTranslationEnabled) {
+      setResourceFootnote('当前正在显示中文译文，请先切回原文后再选择英文片段。');
+      return;
+    }
+
+    setSelectionTranslation(null);
+    setSelectedSegmentIndexes((current) => {
+      const next = current.includes(segmentIndex)
+        ? current.filter((index) => index !== segmentIndex)
+        : [...current, segmentIndex].sort((left, right) => left - right);
+
+      setResourceFootnote(
+        next.length
+          ? `已选中 ${next.length} 段正文，可直接翻译为中文。`
+          : '已清空片段选择。'
+      );
+
+      return next;
+    });
+  };
+
+  const handleTranslateSelection = async () => {
+    if (!selectedExcerpt) {
+      setResourceFootnote('请先在正文中点选需要翻译的句子或段落。');
+      return;
+    }
+
+    setIsSelectionTranslationLoading(true);
+
     try {
-      const translationUrl = getTranslationUrl(
-        displayPageText,
+      const translatedText = await translateSelectedText(
+        selectedExcerpt,
         book.translationSourceLocale ?? 'auto',
         book.translationTargetLocale ?? 'zh-CN'
       );
 
-      await Linking.openURL(translationUrl);
-      setResourceFootnote('已打开 Google Translate，本页英文内容会自动带入翻译页面。');
-    } catch {
-      setResourceFootnote('当前环境无法直接打开 Google Translate。');
+      setSelectionTranslation(translatedText);
+      setResourceFootnote('已完成片段翻译，结果显示在阅读页内。');
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : '当前环境无法完成翻译。';
+      setSelectionTranslation(null);
+      setResourceFootnote(detail);
+    } finally {
+      setIsSelectionTranslationLoading(false);
     }
   };
 
@@ -661,9 +744,11 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
     }
 
     setIsTranslationEnabled((value) => !value);
+    setSelectedSegmentIndexes([]);
+    setSelectionTranslation(null);
     setResourceFootnote(
       isTranslationEnabled
-        ? '已切回英文原文；如需机翻，可继续打开 Google Translate。'
+        ? '已切回英文原文；可继续点选正文片段并翻译为中文。'
         : '已切到当前页中文译文；原文仍可通过按钮随时切回。'
     );
   };
@@ -1191,6 +1276,9 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
                 <Text style={[styles.pageMetaLabel, { color: readerTheme.textSecondary }]}>
                   {remoteContentMessage}
                 </Text>
+                <Text style={[styles.pageMetaLabel, { color: selectedSegmentIndexes.length ? readerTheme.primary : readerTheme.textSecondary }]}>
+                  {selectedSnippetLabel}
+                </Text>
               </View>
             </View>
             <Pressable onPress={handleToggleChrome} style={styles.readerTapZone}>
@@ -1199,7 +1287,36 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
                 showsVerticalScrollIndicator={false}
                 style={styles.readerScroll}
               >
-                <Text style={[styles.pageBody, { color: readerTheme.text }]}>{displayPageText}</Text>
+                {isTranslationEnabled && translatedPage ? (
+                  <Text style={[styles.pageBody, { color: readerTheme.text }]}>{displayPageText}</Text>
+                ) : (
+                  <Text style={[styles.pageBody, { color: readerTheme.text }]}>
+                    {selectableSegments.map((segment, index) => {
+                      const isSelected = selectedSegmentIndexes.includes(index);
+
+                      return (
+                        <Text
+                          key={`${page}-${index}-${segment.slice(0, 16)}`}
+                          onPress={() => handleToggleTextSelection(index)}
+                          style={[
+                            styles.pageBodySegment,
+                            isSelected && {
+                              backgroundColor: readerTheme.primary,
+                              color: readerTheme.primaryText
+                            }
+                          ]}
+                        >
+                          {segment}
+                        </Text>
+                      );
+                    })}
+                  </Text>
+                )}
+                {!isTranslationEnabled ? (
+                  <Text style={[styles.selectionHint, { color: readerTheme.textSecondary }]}>
+                    轻点正文句子可选中片段，再在“查看更多”里翻译成中文。
+                  </Text>
+                ) : null}
               </ScrollView>
             </Pressable>
             {isContentDrawerVisible ? (
@@ -1369,15 +1486,20 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
                       </Text>
                     </Pressable>
                     <Pressable
-                      onPress={() => void handleTranslatePage()}
+                      disabled={isTranslationEnabled || !selectedExcerpt || isSelectionTranslationLoading}
+                      onPress={() => void handleTranslateSelection()}
                       style={[
                         styles.moreToolCard,
-                        { backgroundColor: readerTheme.surfaceMuted, borderColor: readerTheme.border }
+                        { backgroundColor: readerTheme.surfaceMuted, borderColor: readerTheme.border },
+                        (isTranslationEnabled || !selectedExcerpt || isSelectionTranslationLoading) &&
+                          styles.utilityButtonDisabled
                       ]}
                     >
-                      <Text style={[styles.moreToolTitle, { color: readerTheme.primary }]}>Google 翻译</Text>
+                      <Text style={[styles.moreToolTitle, { color: readerTheme.primary }]}>
+                        {isSelectionTranslationLoading ? '正在翻译片段' : '翻译已选片段'}
+                      </Text>
                       <Text style={[styles.moreToolDescription, { color: readerTheme.textSecondary }]}>
-                        外跳翻译当前页正文。
+                        先在正文里点选句子，再把选中部分直接翻成中文。
                       </Text>
                     </Pressable>
                     <Pressable
@@ -1448,6 +1570,50 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
                   >
                     {resourceFootnote}
                   </Text>
+                  <View
+                    style={[
+                      styles.selectionTranslationCard,
+                      {
+                        backgroundColor: readerTheme.surfaceMuted,
+                        borderColor: readerTheme.panelBorder
+                      }
+                    ]}
+                  >
+                    <View style={styles.selectionTranslationHeader}>
+                      <Text style={[styles.selectionTranslationTitle, { color: readerTheme.text }]}>
+                        片段翻译
+                      </Text>
+                      {selectedExcerpt ? (
+                        <Pressable
+                          onPress={() => {
+                            setSelectedSegmentIndexes([]);
+                            setSelectionTranslation(null);
+                            setResourceFootnote('已清空片段选择。');
+                          }}
+                          style={[styles.selectionClearButton, { backgroundColor: readerTheme.surface }]}
+                        >
+                          <Text style={[styles.selectionClearButtonLabel, { color: readerTheme.primary }]}>
+                            清空选择
+                          </Text>
+                        </Pressable>
+                      ) : null}
+                    </View>
+                    <Text style={[styles.selectionTranslationLabel, { color: readerTheme.textSecondary }]}>
+                      {selectedExcerpt ? '已选英文片段' : '请先回到正文点击句子进行选择'}
+                    </Text>
+                    <Text style={[styles.selectionTranslationExcerpt, { color: readerTheme.text }]}>
+                      {selectedExcerpt || '未选中任何正文片段。'}
+                    </Text>
+                    <Text style={[styles.selectionTranslationLabel, { color: readerTheme.textSecondary }]}>
+                      中文结果
+                    </Text>
+                    <Text style={[styles.selectionTranslationResult, { color: readerTheme.text }]}>
+                      {selectionTranslation ??
+                        (isSelectionTranslationLoading
+                          ? '正在请求翻译服务...'
+                          : '翻译结果会直接显示在这里，不再外跳浏览器。')}
+                    </Text>
+                  </View>
                 </View>
               </View>
             ) : null}
@@ -2029,6 +2195,14 @@ const styles = StyleSheet.create({
     lineHeight: 31,
     paddingBottom: 6
   },
+  pageBodySegment: {
+    borderRadius: 6
+  },
+  selectionHint: {
+    fontSize: 11,
+    lineHeight: 18,
+    marginTop: 12
+  },
   footerPanel: {
     borderRadius: 26,
     borderWidth: 1,
@@ -2128,5 +2302,43 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     textAlign: 'center'
+  },
+  selectionTranslationCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 8,
+    marginTop: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12
+  },
+  selectionTranslationHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between'
+  },
+  selectionTranslationTitle: {
+    fontSize: 13,
+    fontWeight: '800'
+  },
+  selectionClearButton: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6
+  },
+  selectionClearButtonLabel: {
+    fontSize: 11,
+    fontWeight: '700'
+  },
+  selectionTranslationLabel: {
+    fontSize: 11,
+    fontWeight: '700'
+  },
+  selectionTranslationExcerpt: {
+    fontSize: 12,
+    lineHeight: 20
+  },
+  selectionTranslationResult: {
+    fontSize: 13,
+    lineHeight: 20
   }
 });
