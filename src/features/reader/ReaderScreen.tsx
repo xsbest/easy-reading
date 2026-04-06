@@ -162,6 +162,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
           : `当前显示 ${book.pages.length} 页导读内容`;
   const guideToggleLabel = isTocVisible ? '收起目录导读' : '目录导读';
   const aiGuideToggleLabel = isAiGuideVisible ? '收起 AI 导读' : 'AI 导读';
+  const isContentDrawerVisible = isTocVisible || isAiGuideVisible;
 
   const backgroundOpacity = dragX.interpolate({
     inputRange: [-pageWidth * MAX_DRAG_RATIO, 0, pageWidth * MAX_DRAG_RATIO],
@@ -676,15 +677,23 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
 
   const handleToggleToc = () => {
     revealChrome();
-    setIsTocVisible((value) => !value);
-    setIsAiGuideVisible(false);
+    setIsTocVisible((value) => {
+      const nextValue = !value;
+
+      setIsAiGuideVisible(false);
+      return nextValue;
+    });
     setResourceFootnote(`${pdfStatusLabel}，目录导读可直接跳转到对应章节导读页。`);
   };
 
   const handleToggleAiGuide = () => {
     revealChrome();
-    setIsAiGuideVisible((value) => !value);
-    setIsTocVisible(false);
+    setIsAiGuideVisible((value) => {
+      const nextValue = !value;
+
+      setIsTocVisible(false);
+      return nextValue;
+    });
     setResourceFootnote('AI 导读会根据本书结构给出阅读顺序、理解重点和思考问题。');
   };
 
@@ -692,6 +701,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
     await stopActiveNarration();
     goToPage(book.id, nextPageIndex);
     setIsTocVisible(false);
+    setIsAiGuideVisible(false);
     setResourceFootnote(`已跳转到 ${title}。`);
     revealChrome();
   };
@@ -1272,97 +1282,120 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
                 showsVerticalScrollIndicator={false}
                 style={styles.readerScroll}
               >
-                {isTocVisible && tocItems.length ? (
-                  <View
-                    style={[
-                      styles.guidePanel,
-                      {
-                        backgroundColor: readerTheme.surfaceMuted,
-                        borderColor: readerTheme.border
-                      }
-                    ]}
-                  >
-                    <Text style={[styles.guidePanelTitle, { color: readerTheme.text }]}>目录导读</Text>
-                    <Text style={[styles.guidePanelSummary, { color: readerTheme.textSecondary }]}>
-                      共 {tocItems.length} 个导读页，覆盖 {pdfStatusLabel} 的主要章节脉络。
-                    </Text>
-                    <View style={styles.guideList}>
-                      {tocItems.map((item) => (
-                        <Pressable
-                          key={`${item.title}-${item.pageIndex}`}
-                          onPress={() => void handleJumpToGuidePage(item.pageIndex, item.title)}
-                          style={[
-                            styles.guideRow,
-                            {
-                              backgroundColor:
-                                item.pageIndex === page ? readerTheme.panelBackground : readerTheme.surface,
-                              borderColor:
-                                item.pageIndex === page ? readerTheme.primary : readerTheme.border
-                            }
-                          ]}
-                        >
-                          <View style={styles.guideRowMeta}>
-                            <Text style={[styles.guideRowIndex, { color: readerTheme.primary }]}>
-                              {item.pageIndex + 1}
-                            </Text>
-                            <View style={styles.guideRowText}>
-                              <Text style={[styles.guideRowTitle, { color: readerTheme.text }]}>{item.title}</Text>
-                              <Text style={[styles.guideRowSummary, { color: readerTheme.textSecondary }]}>
-                                {item.summary}
-                              </Text>
-                            </View>
-                          </View>
-                          <Text style={[styles.guideRowPdfLabel, { color: readerTheme.textSecondary }]}>
-                            {item.pdfPageLabel ?? `第 ${item.pageIndex + 1} 页`}
-                          </Text>
-                        </Pressable>
-                      ))}
-                    </View>
-                  </View>
-                ) : null}
-                {isAiGuideVisible && aiGuide ? (
-                  <View
-                    style={[
-                      styles.guidePanel,
-                      {
-                        backgroundColor: readerTheme.surfaceMuted,
-                        borderColor: readerTheme.border
-                      }
-                    ]}
-                  >
-                    <Text style={[styles.guidePanelTitle, { color: readerTheme.text }]}>AI 导读</Text>
-                    <Text style={[styles.guidePanelSummary, { color: readerTheme.textSecondary }]}>
-                      {aiGuide.summary}
-                    </Text>
-                    <View style={styles.aiGuideSection}>
-                      <Text style={[styles.aiGuideSectionTitle, { color: readerTheme.primary }]}>建议读法</Text>
-                      {aiGuide.recommendedPath.map((item) => (
-                        <Text key={item} style={[styles.aiGuideBullet, { color: readerTheme.text }]}>
-                          • {item}
-                        </Text>
-                      ))}
-                    </View>
-                    <View style={styles.aiGuideSection}>
-                      <Text style={[styles.aiGuideSectionTitle, { color: readerTheme.primary }]}>理解抓手</Text>
-                      {aiGuide.understandingTips.map((item) => (
-                        <Text key={item} style={[styles.aiGuideBullet, { color: readerTheme.text }]}>
-                          • {item}
-                        </Text>
-                      ))}
-                    </View>
-                    <View style={styles.aiGuideSection}>
-                      <Text style={[styles.aiGuideSectionTitle, { color: readerTheme.primary }]}>思考问题</Text>
-                      {aiGuide.reflectionQuestions.map((item) => (
-                        <Text key={item} style={[styles.aiGuideBullet, { color: readerTheme.text }]}>
-                          • {item}
-                        </Text>
-                      ))}
-                    </View>
-                  </View>
-                ) : null}
                 <Text style={[styles.pageBody, { color: readerTheme.text }]}>{displayPageText}</Text>
               </ScrollView>
             </Pressable>
+            {isContentDrawerVisible ? (
+              <View pointerEvents="box-none" style={styles.contentDrawerOverlay}>
+                <Pressable
+                  onPress={() => {
+                    setIsTocVisible(false);
+                    setIsAiGuideVisible(false);
+                  }}
+                  style={styles.contentDrawerBackdrop}
+                />
+                <View
+                  style={[
+                    styles.contentDrawer,
+                    {
+                      backgroundColor: readerTheme.panelBackground,
+                      borderColor: readerTheme.panelBorder,
+                      shadowColor: readerTheme.shadow
+                    }
+                  ]}
+                >
+                  <View style={styles.contentDrawerHeader}>
+                    <View style={styles.contentDrawerMeta}>
+                      <Text style={[styles.guidePanelTitle, { color: readerTheme.text }]}>
+                        {isTocVisible ? '目录导读' : 'AI 导读'}
+                      </Text>
+                      <Text style={[styles.guidePanelSummary, { color: readerTheme.textSecondary }]}>
+                        {isTocVisible
+                          ? `共 ${tocItems.length} 个导读页，覆盖 ${pdfStatusLabel} 的主要章节脉络。`
+                          : aiGuide?.summary}
+                      </Text>
+                    </View>
+                    <Pressable
+                      onPress={() => {
+                        setIsTocVisible(false);
+                        setIsAiGuideVisible(false);
+                      }}
+                      style={[styles.contentDrawerClose, { backgroundColor: readerTheme.surfaceMuted }]}
+                    >
+                      <Text style={[styles.contentDrawerCloseLabel, { color: readerTheme.primary }]}>收起</Text>
+                    </Pressable>
+                  </View>
+                  <ScrollView
+                    contentContainerStyle={styles.contentDrawerScrollContent}
+                    showsVerticalScrollIndicator={false}
+                    style={styles.contentDrawerScroll}
+                  >
+                    {isTocVisible && tocItems.length ? (
+                      <View style={styles.guideList}>
+                        {tocItems.map((item) => (
+                          <Pressable
+                            key={`${item.title}-${item.pageIndex}`}
+                            onPress={() => void handleJumpToGuidePage(item.pageIndex, item.title)}
+                            style={[
+                              styles.guideRow,
+                              {
+                                backgroundColor:
+                                  item.pageIndex === page ? readerTheme.surfaceMuted : readerTheme.surface,
+                                borderColor:
+                                  item.pageIndex === page ? readerTheme.primary : readerTheme.border
+                              }
+                            ]}
+                          >
+                            <View style={styles.guideRowMeta}>
+                              <Text style={[styles.guideRowIndex, { color: readerTheme.primary }]}>
+                                {item.pageIndex + 1}
+                              </Text>
+                              <View style={styles.guideRowText}>
+                                <Text style={[styles.guideRowTitle, { color: readerTheme.text }]}>{item.title}</Text>
+                                <Text style={[styles.guideRowSummary, { color: readerTheme.textSecondary }]}>
+                                  {item.summary}
+                                </Text>
+                              </View>
+                            </View>
+                            <Text style={[styles.guideRowPdfLabel, { color: readerTheme.textSecondary }]}>
+                              {item.pdfPageLabel ?? `第 ${item.pageIndex + 1} 页`}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    ) : null}
+                    {isAiGuideVisible && aiGuide ? (
+                      <View style={styles.contentDrawerSectionStack}>
+                        <View style={styles.aiGuideSection}>
+                          <Text style={[styles.aiGuideSectionTitle, { color: readerTheme.primary }]}>建议读法</Text>
+                          {aiGuide.recommendedPath.map((item) => (
+                            <Text key={item} style={[styles.aiGuideBullet, { color: readerTheme.text }]}>
+                              • {item}
+                            </Text>
+                          ))}
+                        </View>
+                        <View style={styles.aiGuideSection}>
+                          <Text style={[styles.aiGuideSectionTitle, { color: readerTheme.primary }]}>理解抓手</Text>
+                          {aiGuide.understandingTips.map((item) => (
+                            <Text key={item} style={[styles.aiGuideBullet, { color: readerTheme.text }]}>
+                              • {item}
+                            </Text>
+                          ))}
+                        </View>
+                        <View style={styles.aiGuideSection}>
+                          <Text style={[styles.aiGuideSectionTitle, { color: readerTheme.primary }]}>思考问题</Text>
+                          {aiGuide.reflectionQuestions.map((item) => (
+                            <Text key={item} style={[styles.aiGuideBullet, { color: readerTheme.text }]}>
+                              • {item}
+                            </Text>
+                          ))}
+                        </View>
+                      </View>
+                    ) : null}
+                  </ScrollView>
+                </View>
+              </View>
+            ) : null}
           </Animated.View>
         </View>
       </View>
@@ -1772,12 +1805,60 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700'
   },
-  guidePanel: {
-    borderRadius: 18,
+  contentDrawerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 6
+  },
+  contentDrawerBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(12, 16, 24, 0.18)'
+  },
+  contentDrawer: {
+    borderBottomLeftRadius: 22,
+    borderBottomRightRadius: 22,
     borderWidth: 1,
-    gap: 10,
-    marginBottom: 12,
-    padding: 14
+    left: 10,
+    maxHeight: '72%',
+    paddingBottom: 12,
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    position: 'absolute',
+    right: 10,
+    shadowOffset: {
+      width: 0,
+      height: 12
+    },
+    shadowOpacity: 0.14,
+    shadowRadius: 24,
+    top: 0
+  },
+  contentDrawerHeader: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 10
+  },
+  contentDrawerMeta: {
+    flex: 1,
+    gap: 6
+  },
+  contentDrawerClose: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8
+  },
+  contentDrawerCloseLabel: {
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  contentDrawerScroll: {
+    flexGrow: 0
+  },
+  contentDrawerScrollContent: {
+    paddingBottom: 2
+  },
+  contentDrawerSectionStack: {
+    gap: 12
   },
   guidePanelTitle: {
     fontSize: 15,
