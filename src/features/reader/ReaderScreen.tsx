@@ -80,8 +80,6 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
   const { height, width } = useWindowDimensions();
   const horizontalInset = Math.min(Math.max(width * 0.04, 12), 22);
   const shellVerticalInset = Math.min(Math.max(height * 0.018, 8), 18);
-  const shellRadius = width < 390 ? 26 : 32;
-  const pageFrameHorizontalInset = width < 390 ? 12 : 16;
   const pageWidth = Math.max(width - horizontalInset * 2 - PAGE_SIDE_GUTTER * 2, 248);
   const page = currentPageByBookId[book.id] ?? 0;
   const [dragDirection, setDragDirection] = useState<-1 | 0 | 1>(0);
@@ -93,6 +91,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
   const [isChromeVisible, setIsChromeVisible] = useState(false);
   const [isThemeTrayOpen, setIsThemeTrayOpen] = useState(false);
   const [isVoiceTrayOpen, setIsVoiceTrayOpen] = useState(false);
+  const [isMoreToolsVisible, setIsMoreToolsVisible] = useState(false);
   const [isTranslationEnabled, setIsTranslationEnabled] = useState(false);
   const [isTocVisible, setIsTocVisible] = useState(false);
   const [isAiGuideVisible, setIsAiGuideVisible] = useState(false);
@@ -207,6 +206,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
     chromeHideTimeoutRef.current = setTimeout(() => {
       setIsThemeTrayOpen(false);
       setIsVoiceTrayOpen(false);
+      setIsMoreToolsVisible(false);
       Animated.spring(chromeProgress, {
         toValue: 0,
         bounciness: 0,
@@ -611,11 +611,18 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
     revealChrome();
   };
 
+  const closeToolOverlays = () => {
+    setIsThemeTrayOpen(false);
+    setIsVoiceTrayOpen(false);
+    setIsMoreToolsVisible(false);
+    setIsTocVisible(false);
+    setIsAiGuideVisible(false);
+  };
+
   const handleToggleChrome = () => {
     if (isChromeVisible) {
       clearChromeHideTimeout();
-      setIsThemeTrayOpen(false);
-      setIsVoiceTrayOpen(false);
+      closeToolOverlays();
       Animated.spring(chromeProgress, {
         toValue: 0,
         bounciness: 0,
@@ -677,6 +684,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
 
   const handleToggleToc = () => {
     revealChrome();
+    setIsMoreToolsVisible(false);
     setIsTocVisible((value) => {
       const nextValue = !value;
 
@@ -688,6 +696,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
 
   const handleToggleAiGuide = () => {
     revealChrome();
+    setIsMoreToolsVisible(false);
     setIsAiGuideVisible((value) => {
       const nextValue = !value;
 
@@ -702,6 +711,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
     goToPage(book.id, nextPageIndex);
     setIsTocVisible(false);
     setIsAiGuideVisible(false);
+    setIsMoreToolsVisible(false);
     setResourceFootnote(`已跳转到 ${title}。`);
     revealChrome();
   };
@@ -728,8 +738,6 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
         ? '停止'
         : '暂停'
     : '听书';
-  const isFullBleedMode = !isChromeVisible;
-
   const handlePrimaryNarrationAction = async () => {
     if (!isCurrentNarration) {
       await handleStartNarration();
@@ -767,7 +775,6 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
             { backgroundColor: readerTheme.heroGlowSecondary }
           ]}
         />
-        <View style={[styles.ambientFrame, { borderColor: readerTheme.shellBorder }]} />
       </View>
 
       <Animated.View
@@ -819,6 +826,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
               revealChrome();
               setIsThemeTrayOpen((value) => !value);
               setIsVoiceTrayOpen(false);
+              setIsMoreToolsVisible(false);
             }}
             style={[
               styles.iconButton,
@@ -838,6 +846,7 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
               revealChrome();
               setIsVoiceTrayOpen((value) => !value);
               setIsThemeTrayOpen(false);
+              setIsMoreToolsVisible(false);
             }}
             style={[
               styles.iconButton,
@@ -862,25 +871,14 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
         style={[
           styles.readerShell,
           {
-            backgroundColor: isFullBleedMode ? 'transparent' : readerTheme.shellBackground,
-            borderColor: isFullBleedMode ? 'transparent' : readerTheme.shellBorder,
-            borderRadius: isFullBleedMode ? 0 : shellRadius,
-            borderWidth: isFullBleedMode ? 0 : 1,
-            marginHorizontal: isFullBleedMode ? 0 : horizontalInset,
-            marginVertical: isFullBleedMode ? 0 : shellVerticalInset,
-            paddingBottom: isFullBleedMode ? 0 : 8,
-            paddingHorizontal: isFullBleedMode ? 0 : 8,
-            paddingTop: isFullBleedMode ? 0 : 8,
-            shadowOpacity: isFullBleedMode ? 0 : 0.16
+            marginHorizontal: 0,
+            marginVertical: 0,
+            paddingBottom: 0,
+            paddingHorizontal: 0,
+            paddingTop: 0
           }
         ]}
       >
-        {isFullBleedMode ? null : (
-          <View
-            pointerEvents="none"
-            style={[styles.readerShellInset, { borderColor: readerTheme.shellInset, borderRadius: shellRadius - 6 }]}
-          />
-        )}
         {isThemeTrayOpen ? (
           <View
             style={[
@@ -1108,9 +1106,9 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
           style={[
             styles.pageFrame,
             {
-              borderRadius: isFullBleedMode ? 0 : 28,
-              marginHorizontal: isFullBleedMode ? 0 : pageFrameHorizontalInset,
-              marginTop: isFullBleedMode ? 0 : 8
+              borderRadius: 0,
+              marginHorizontal: 0,
+              marginTop: 0
             }
           ]}
         >
@@ -1121,8 +1119,8 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
               {
                 backgroundColor: readerTheme.surfaceRaised,
                 borderColor: readerTheme.border,
-                borderRadius: isFullBleedMode ? 0 : shellRadius - 4,
-                borderWidth: isFullBleedMode ? 0 : 1
+                borderRadius: 0,
+                borderWidth: 0
               },
               {
                 opacity: backgroundOpacity
@@ -1160,8 +1158,8 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
               {
                 backgroundColor: readerTheme.surface,
                 borderColor: readerTheme.border,
-                borderRadius: isFullBleedMode ? 0 : shellRadius - 4,
-                borderWidth: isFullBleedMode ? 0 : 1
+                borderRadius: 0,
+                borderWidth: 0
               },
               {
                 transform: [{ translateX: dragX }]
@@ -1174,12 +1172,12 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
                 styles.pageTrim,
                 {
                   borderColor: readerTheme.pageTrim,
-                  borderRadius: isFullBleedMode ? 0 : shellRadius - 10,
-                  opacity: isFullBleedMode ? 0 : 0.9
+                  borderRadius: 0,
+                  opacity: 0
                 }
               ]}
             />
-            <View style={[styles.pageTopRow, isFullBleedMode && styles.pageTopRowCompact]}>
+            <View style={[styles.pageTopRow, styles.pageTopRowCompact]}>
               <View style={[styles.chapterPill, { backgroundColor: book.accentColor }]}>
                 <Text style={styles.chapterPillLabel}>沉浸阅读</Text>
               </View>
@@ -1195,87 +1193,6 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
                 </Text>
               </View>
             </View>
-            <View style={styles.utilityRow}>
-              <Pressable
-                disabled={!translatedPage}
-                onPress={handleToggleInlineTranslation}
-                style={[
-                  styles.utilityButton,
-                  { backgroundColor: readerTheme.surfaceMuted, borderColor: translatedPage ? readerTheme.primary : readerTheme.border },
-                  !translatedPage && styles.utilityButtonDisabled
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.utilityButtonLabel,
-                    { color: translatedPage ? readerTheme.primary : readerTheme.textSecondary }
-                  ]}
-                >
-                  {translationToggleLabel}
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => void handleTranslatePage()}
-                style={[styles.utilityButton, { backgroundColor: readerTheme.surfaceMuted, borderColor: readerTheme.border }]}
-              >
-                <Text style={[styles.utilityButtonLabel, { color: readerTheme.primary }]}>Google 翻译</Text>
-              </Pressable>
-              <Pressable
-                disabled={!book.sourcePdfUri}
-                onPress={() => void handleOpenPdf()}
-                style={[
-                  styles.utilityButton,
-                  { backgroundColor: readerTheme.surfaceMuted, borderColor: readerTheme.border },
-                  !book.sourcePdfUri && styles.utilityButtonDisabled
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.utilityButtonLabel,
-                    { color: book.sourcePdfUri ? readerTheme.text : readerTheme.textSecondary }
-                  ]}
-                >
-                  打开 PDF
-                </Text>
-              </Pressable>
-            </View>
-            <View style={styles.utilityRow}>
-              <Pressable
-                onPress={handleToggleToc}
-                style={[styles.utilityButton, { backgroundColor: readerTheme.surfaceMuted, borderColor: readerTheme.border }]}
-              >
-                <Text style={[styles.utilityButtonLabel, { color: readerTheme.primary }]}>{guideToggleLabel}</Text>
-              </Pressable>
-              <Pressable
-                disabled={!aiGuide}
-                onPress={handleToggleAiGuide}
-                style={[
-                  styles.utilityButton,
-                  { backgroundColor: readerTheme.surfaceMuted, borderColor: readerTheme.border },
-                  !aiGuide && styles.utilityButtonDisabled
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.utilityButtonLabel,
-                    { color: aiGuide ? readerTheme.primary : readerTheme.textSecondary }
-                  ]}
-                >
-                  {aiGuideToggleLabel}
-                </Text>
-              </Pressable>
-            </View>
-            <Text
-              style={[
-                styles.resourceFootnote,
-                {
-                  backgroundColor: readerTheme.surfaceMuted,
-                  color: readerTheme.textSecondary
-                }
-              ]}
-            >
-              {resourceFootnote}
-            </Text>
             <Pressable onPress={handleToggleChrome} style={styles.readerTapZone}>
               <ScrollView
                 contentContainerStyle={styles.readerContent}
@@ -1396,6 +1313,144 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
                 </View>
               </View>
             ) : null}
+            {isMoreToolsVisible ? (
+              <View pointerEvents="box-none" style={styles.contentDrawerOverlay}>
+                <Pressable
+                  onPress={() => setIsMoreToolsVisible(false)}
+                  style={styles.contentDrawerBackdrop}
+                />
+                <View
+                  style={[
+                    styles.moreToolsModal,
+                    {
+                      backgroundColor: readerTheme.panelBackground,
+                      borderColor: readerTheme.panelBorder,
+                      shadowColor: readerTheme.shadow
+                    }
+                  ]}
+                >
+                  <View style={styles.contentDrawerHeader}>
+                    <View style={styles.contentDrawerMeta}>
+                      <Text style={[styles.guidePanelTitle, { color: readerTheme.text }]}>查看更多</Text>
+                      <Text style={[styles.guidePanelSummary, { color: readerTheme.textSecondary }]}>
+                        翻译、PDF、目录导读和 AI 导读统一收纳在这里，不再占正文区域。
+                      </Text>
+                    </View>
+                    <Pressable
+                      onPress={() => setIsMoreToolsVisible(false)}
+                      style={[styles.contentDrawerClose, { backgroundColor: readerTheme.surfaceMuted }]}
+                    >
+                      <Text style={[styles.contentDrawerCloseLabel, { color: readerTheme.primary }]}>关闭</Text>
+                    </Pressable>
+                  </View>
+                  <View style={styles.moreToolsGrid}>
+                    <Pressable
+                      disabled={!translatedPage}
+                      onPress={handleToggleInlineTranslation}
+                      style={[
+                        styles.moreToolCard,
+                        {
+                          backgroundColor: readerTheme.surfaceMuted,
+                          borderColor: translatedPage ? readerTheme.primary : readerTheme.border
+                        },
+                        !translatedPage && styles.utilityButtonDisabled
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.moreToolTitle,
+                          { color: translatedPage ? readerTheme.primary : readerTheme.textSecondary }
+                        ]}
+                      >
+                        {translationToggleLabel}
+                      </Text>
+                      <Text style={[styles.moreToolDescription, { color: readerTheme.textSecondary }]}>
+                        当前页内切换原文与已提供的中文译文。
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => void handleTranslatePage()}
+                      style={[
+                        styles.moreToolCard,
+                        { backgroundColor: readerTheme.surfaceMuted, borderColor: readerTheme.border }
+                      ]}
+                    >
+                      <Text style={[styles.moreToolTitle, { color: readerTheme.primary }]}>Google 翻译</Text>
+                      <Text style={[styles.moreToolDescription, { color: readerTheme.textSecondary }]}>
+                        外跳翻译当前页正文。
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      disabled={!book.sourcePdfUri}
+                      onPress={() => void handleOpenPdf()}
+                      style={[
+                        styles.moreToolCard,
+                        { backgroundColor: readerTheme.surfaceMuted, borderColor: readerTheme.border },
+                        !book.sourcePdfUri && styles.utilityButtonDisabled
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.moreToolTitle,
+                          { color: book.sourcePdfUri ? readerTheme.text : readerTheme.textSecondary }
+                        ]}
+                      >
+                        打开 PDF
+                      </Text>
+                      <Text style={[styles.moreToolDescription, { color: readerTheme.textSecondary }]}>
+                        查看挂接的原始 PDF 资源。
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={handleToggleToc}
+                      style={[
+                        styles.moreToolCard,
+                        { backgroundColor: readerTheme.surfaceMuted, borderColor: readerTheme.border }
+                      ]}
+                    >
+                      <Text style={[styles.moreToolTitle, { color: readerTheme.primary }]}>{guideToggleLabel}</Text>
+                      <Text style={[styles.moreToolDescription, { color: readerTheme.textSecondary }]}>
+                        打开目录导读并直接跳到指定导读页。
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      disabled={!aiGuide}
+                      onPress={handleToggleAiGuide}
+                      style={[
+                        styles.moreToolCard,
+                        { backgroundColor: readerTheme.surfaceMuted, borderColor: readerTheme.border },
+                        !aiGuide && styles.utilityButtonDisabled
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.moreToolTitle,
+                          { color: aiGuide ? readerTheme.primary : readerTheme.textSecondary }
+                        ]}
+                      >
+                        {aiGuideToggleLabel}
+                      </Text>
+                      <Text style={[styles.moreToolDescription, { color: readerTheme.textSecondary }]}>
+                        查看本书的建议读法、理解抓手和思考问题。
+                      </Text>
+                    </Pressable>
+                  </View>
+                  <Text
+                    style={[
+                      styles.resourceFootnote,
+                      {
+                        backgroundColor: readerTheme.surfaceMuted,
+                        color: readerTheme.textSecondary,
+                        marginBottom: 0,
+                        marginTop: 12
+                      }
+                    ]}
+                  >
+                    {resourceFootnote}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
           </Animated.View>
         </View>
       </View>
@@ -1434,6 +1489,25 @@ export function ReaderScreen({ book, onClose }: ReaderScreenProps) {
               {toneStatusLabel} · {narrationStatusLabel}
             </Text>
           </View>
+          <Pressable
+            onPress={() => {
+              revealChrome();
+              setIsMoreToolsVisible((value) => !value);
+              setIsThemeTrayOpen(false);
+              setIsVoiceTrayOpen(false);
+              setIsTocVisible(false);
+              setIsAiGuideVisible(false);
+            }}
+            style={[
+              styles.compactSecondaryButton,
+              {
+                backgroundColor: readerTheme.surface,
+                borderColor: readerTheme.panelBorder
+              }
+            ]}
+          >
+            <Text style={[styles.compactSecondaryButtonLabel, { color: readerTheme.primary }]}>查看更多</Text>
+          </Pressable>
           <Pressable
             onPress={() => void handlePrimaryNarrationAction()}
             style={[
@@ -1489,16 +1563,6 @@ const styles = StyleSheet.create({
     left: -72,
     opacity: 0.7,
     width: 280
-  },
-  ambientFrame: {
-    borderRadius: 32,
-    borderWidth: 1,
-    bottom: 14,
-    left: 12,
-    opacity: 0.3,
-    position: 'absolute',
-    right: 12,
-    top: 36
   },
   headerCard: {
     alignItems: 'center',
@@ -1648,29 +1712,12 @@ const styles = StyleSheet.create({
     marginTop: 3
   },
   readerShell: {
-    borderRadius: 34,
-    borderWidth: 1,
     flex: 1,
-    paddingBottom: 8,
-    paddingHorizontal: 8,
-    paddingTop: 8,
-    position: 'relative',
-    shadowOffset: {
-      width: 0,
-      height: 16
-    },
-    shadowOpacity: 0.16,
-    shadowRadius: 32
-  },
-  readerShellInset: {
-    borderRadius: 28,
-    borderWidth: 1,
-    bottom: 8,
-    left: 8,
-    opacity: 0.5,
     position: 'absolute',
-    right: 8,
-    top: 8
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0
   },
   edgeAssistOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -1786,24 +1833,8 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700'
   },
-  utilityRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 10
-  },
-  utilityButton: {
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8
-  },
   utilityButtonDisabled: {
     opacity: 0.5
-  },
-  utilityButtonLabel: {
-    fontSize: 12,
-    fontWeight: '700'
   },
   contentDrawerOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -1831,6 +1862,24 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.14,
     shadowRadius: 24,
     top: 0
+  },
+  moreToolsModal: {
+    borderRadius: 24,
+    borderWidth: 1,
+    left: 18,
+    maxHeight: '78%',
+    paddingBottom: 16,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    position: 'absolute',
+    right: 18,
+    shadowOffset: {
+      width: 0,
+      height: 14
+    },
+    shadowOpacity: 0.16,
+    shadowRadius: 28,
+    top: '18%'
   },
   contentDrawerHeader: {
     alignItems: 'flex-start',
@@ -1902,6 +1951,24 @@ const styles = StyleSheet.create({
   guideRowPdfLabel: {
     fontSize: 11,
     fontWeight: '600'
+  },
+  moreToolsGrid: {
+    gap: 10
+  },
+  moreToolCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 12
+  },
+  moreToolTitle: {
+    fontSize: 13,
+    fontWeight: '800'
+  },
+  moreToolDescription: {
+    fontSize: 12,
+    lineHeight: 18
   },
   aiGuideSection: {
     gap: 6
@@ -2023,6 +2090,18 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 12,
     paddingVertical: 9
+  },
+  compactSecondaryButton: {
+    borderRadius: 999,
+    borderWidth: 1,
+    minHeight: 38,
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8
+  },
+  compactSecondaryButtonLabel: {
+    fontSize: 12,
+    fontWeight: '700'
   },
   compactAudioMeta: {
     flex: 1,
